@@ -6,12 +6,12 @@ const categoriesSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true, 
-      unique: true, 
+      required: true,
+      unique: true,
     },
     user_id: {
       type: mongoose.Schema.ObjectId,
-      default:null
+      default: null,
     },
     unique_id: Number,
   },
@@ -19,7 +19,7 @@ const categoriesSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
+//hassan
 
 
 categoriesSchema.plugin(AutoIncrement, {
