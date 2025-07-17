@@ -1,12 +1,7 @@
 import React from 'react';
 import { Box, Grid, Container, Typography } from '@mui/material';
 import Page from '@/components/Page';
-import {
-    AppNewUsers,
-    AppBugReports,
-    AppItemOrders,
-    AppWeeklySales
-} from '@/components/_dashboard/app';
+import { AppNewUsers, AppItemOrders, AppWeeklySales } from '@/components/_dashboard/app';
 import { decodeToken, getAuthToken, isValidToken } from '@/setting/utils/tokenUtils';
 
 const DashboardApp = (): JSX.Element => {
@@ -53,9 +48,6 @@ const DashboardApp = (): JSX.Element => {
                     <Grid item xs={12} sm={6} md={3}>
                         <AppItemOrders />
                     </Grid>
-                    {/* <Grid item xs={12} sm={6} md={3}>
-                        <AppBugReports />
-                    </Grid> */}
                 </Grid>
             </Container>
         </Page>
