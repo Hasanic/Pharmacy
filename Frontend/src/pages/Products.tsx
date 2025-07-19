@@ -33,7 +33,8 @@ interface APIResponse {
     data: {
         code: number;
         status: string;
-        data: APIProduct[];
+        data?: APIProduct[];
+        message?: string;
     };
     status: number;
     statusText: string;
@@ -68,44 +69,50 @@ const EcommerceShop = (): JSX.Element => {
             try {
                 setLoading(true);
                 const response = (await API.products.getAll()) as unknown as APIResponse;
-                console.log(response);
 
-                if (!response?.data?.data) {
-                    throw new Error('No data received from server');
+                if (response.data?.code >= 400) {
+                    throw new Error(response.data.message || 'Failed to fetch products');
                 }
 
-                const productsData = response.data.data;
-
-                if (!Array.isArray(productsData)) {
-                    throw new Error('Expected array of products');
+                if (!response.data?.data || !Array.isArray(response.data.data)) {
+                    throw new Error('Invalid products data received');
                 }
 
-                const formattedProducts: IProduct[] = productsData.map((product: APIProduct) => {
-                    const category =
-                        typeof product.category_id === 'string'
-                            ? { _id: product.category_id, name: '' }
-                            : product.category_id;
+                const formattedProducts: IProduct[] = response.data.data.map(
+                    (product: APIProduct) => {
+                        const category =
+                            typeof product.category_id === 'string'
+                                ? { _id: product.category_id, name: '' }
+                                : product.category_id;
 
-                    const supplier =
-                        typeof product.supplier_id === 'string'
-                            ? { _id: product.supplier_id, name: '' }
-                            : product.supplier_id;
+                        const supplier =
+                            typeof product.supplier_id === 'string'
+                                ? { _id: product.supplier_id, name: '' }
+                                : product.supplier_id;
 
-                    return {
-                        ...product,
-                        status: 'available',
-                        priceSale: null,
-                        category_id: category,
-                        supplier_id: supplier
-                    };
-                });
+                        return {
+                            ...product,
+                            status: 'available',
+                            priceSale: null,
+                            category_id: category,
+                            supplier_id: supplier
+                        };
+                    }
+                );
 
                 setProducts(formattedProducts);
                 setError(null);
             } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : 'Unknown error';
-                console.error('Failed to fetch products:', error);
-                setError(`Failed to load products: ${message}`);
+                let errorMessage = 'Failed to load products';
+
+                if (typeof error === 'object' && error !== null && 'response' in error) {
+                    const axiosError = error as { response?: { data?: { message?: string } } };
+                    errorMessage = axiosError.response?.data?.message || errorMessage;
+                } else if (error instanceof Error) {
+                    errorMessage = error.message;
+                }
+
+                setError(errorMessage);
                 setProducts([]);
             } finally {
                 setLoading(false);
