@@ -1,12 +1,4 @@
 export interface IUser {
-    // username: string;
-    // id: string;
-    // avatarUrl: string;
-    // name: string;
-    // company: string;
-    // isVerified: boolean;
-    // status: string | undefined;
-    // role: string | undefined;
     id: string;
     username: string;
     role?: {
@@ -38,26 +30,30 @@ export interface IAccount {
     user_id: string | null;
     [key: string]: any; // for additional token claims
 }
-// export interface IAccount {
-//     // username: string;
-//     // email: string;
-//     // role: string | undefined;
-//     _id: string;
-//     photoURL: string;
-//     name: string;
-//     user_id: null | string;
-// }
 
 export interface IProduct {
-    id: string;
-    // cover: string;
+    _id: string;
     name: string;
     price: number;
-    priceSale: number | null;
-    colors: string[];
-    status: string | undefined;
-}
+    unit: string;
+    status?: string; // UI-specific field
+    priceSale?: number | null; // UI-specific field
 
+    // API fields (can be string or object)
+    category_id: string | { _id: string; name: string };
+    supplier_id: string | { _id: string; name: string };
+
+    // Optional fields
+    stock_quantity?: number;
+    expiry_date?: Date | null;
+    description?: string;
+    type?: 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
+    image?: string | null;
+    user_id?: string | null;
+    unique_id?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
 export interface NavItemConfig {
     title: string;
     path: string;

@@ -16,11 +16,8 @@ const RootStyle = styled('div')(({ theme }) => ({
     paddingLeft: theme.spacing(2),
     paddingRight: theme.spacing(2),
     paddingTop: theme.spacing(1.25),
-    // boxShadow: theme.customShadows.z20,
     color: theme.palette.text.primary,
     backgroundColor: theme.palette.background.paper,
-    // borderTopLeftRadius: theme.shape.borderRadiusMd,
-    // borderBottomLeftRadius: theme.shape.borderRadiusMd,
     transition: theme.transitions.create('opacity'),
     '&:hover': { opacity: 0.72 }
 }));
@@ -34,8 +31,5 @@ const CartWidget = (): JSX.Element => {
         </RootStyle>
     );
 };
-// const CartWidget = (): JSX.Element | null => {
-//     return null;
-// };
 
 export default CartWidget;

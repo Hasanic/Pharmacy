@@ -1,17 +1,52 @@
 import { useFormik } from 'formik';
-import React, { useState } from 'react';
-import { Container, Stack, Typography } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Stack, Typography, Button } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import Page from '@/components/Page';
 import {
-    // ProductSort,
     ProductList,
     ProductCartWidget,
     ProductFilterSidebar
 } from '@/components/_dashboard/products';
-import PRODUCTS from '@/_mocks_/products';
+import API from '@/setting/endpoints';
+import { IProduct } from '@/models';
+
+interface APIProduct {
+    _id: string;
+    name: string;
+    category_id: string | { _id: string; name: string };
+    supplier_id: string | { _id: string; name: string };
+    price: number;
+    unit: string;
+    stock_quantity?: number;
+    expiry_date?: Date | null;
+    description?: string;
+    type?: 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
+    image?: string | null;
+    user_id?: string | null;
+    unique_id?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+interface APIResponse {
+    data: {
+        code: number;
+        status: string;
+        data: APIProduct[];
+    };
+    status: number;
+    statusText: string;
+    headers: any;
+    config: any;
+    request?: any;
+}
 
 const EcommerceShop = (): JSX.Element => {
     const [openFilter, setOpenFilter] = useState(false);
+    const [products, setProducts] = useState<IProduct[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const formik = useFormik({
         initialValues: {
@@ -27,6 +62,58 @@ const EcommerceShop = (): JSX.Element => {
     });
 
     const { resetForm, handleSubmit } = formik;
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                setLoading(true);
+                const response = (await API.products.getAll()) as unknown as APIResponse;
+                console.log(response);
+
+                if (!response?.data?.data) {
+                    throw new Error('No data received from server');
+                }
+
+                const productsData = response.data.data;
+
+                if (!Array.isArray(productsData)) {
+                    throw new Error('Expected array of products');
+                }
+
+                const formattedProducts: IProduct[] = productsData.map((product: APIProduct) => {
+                    const category =
+                        typeof product.category_id === 'string'
+                            ? { _id: product.category_id, name: '' }
+                            : product.category_id;
+
+                    const supplier =
+                        typeof product.supplier_id === 'string'
+                            ? { _id: product.supplier_id, name: '' }
+                            : product.supplier_id;
+
+                    return {
+                        ...product,
+                        status: 'available',
+                        priceSale: null,
+                        category_id: category,
+                        supplier_id: supplier
+                    };
+                });
+
+                setProducts(formattedProducts);
+                setError(null);
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                console.error('Failed to fetch products:', error);
+                setError(`Failed to load products: ${message}`);
+                setProducts([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, []);
 
     const handleOpenFilter = () => {
         setOpenFilter(true);
@@ -44,9 +131,29 @@ const EcommerceShop = (): JSX.Element => {
     return (
         <Page title="Dashboard: Products | Minimal-UI">
             <Container>
-                <Typography variant="h4" sx={{ mb: 5 }}>
-                    Products
-                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
+                    <Typography variant="h4" gutterBottom>
+                        Products
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        component={RouterLink}
+                        to="/dashboard/products/create"
+                        startIcon={
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                            </svg>
+                        }
+                    >
+                        New Product
+                    </Button>
+                </Stack>
 
                 <Stack
                     direction="row"
@@ -66,7 +173,13 @@ const EcommerceShop = (): JSX.Element => {
                     </Stack>
                 </Stack>
 
-                <ProductList products={PRODUCTS} />
+                {error ? (
+                    <Typography color="error">{error}</Typography>
+                ) : loading ? (
+                    <Typography>Loading products...</Typography>
+                ) : (
+                    <ProductList products={products} />
+                )}
                 <ProductCartWidget />
             </Container>
         </Page>
