@@ -1,21 +1,30 @@
 import React from 'react';
 import { alpha, styled } from '@mui/material/styles';
 
-const RootStyle = styled('span')(({ theme, styleProps }) => {
-    const { color, variant } = styleProps;
+interface StyleProps {
+    color: 'default' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error';
+    variant: 'filled' | 'outlined' | 'ghost';
+}
 
-    const styleFilled = (color) => ({
+interface RootStyleProps {
+    ownerState: StyleProps;
+}
+
+const RootStyle = styled('span')<RootStyleProps>(({ theme, ownerState }) => {
+    const { color, variant } = ownerState;
+
+    const styleFilled = (color: string) => ({
         color: theme.palette[color].contrastText,
         backgroundColor: theme.palette[color].main
     });
 
-    const styleOutlined = (color) => ({
+    const styleOutlined = (color: string) => ({
         color: theme.palette[color].main,
         backgroundColor: 'transparent',
         border: `1px solid ${theme.palette[color].main}`
     });
 
-    const styleGhost = (color) => ({
+    const styleGhost = (color: string) => ({
         color: theme.palette[color].dark,
         backgroundColor: alpha(theme.palette[color].main, 0.16)
     });
@@ -60,15 +69,14 @@ const RootStyle = styled('span')(({ theme, styleProps }) => {
 interface Props {
     color?: 'default' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error';
     variant?: 'filled' | 'outlined' | 'ghost';
-    children?: JSX.Element;
-    other?;
-    sx?;
+    children?: React.ReactNode;
+    sx?: object;
 }
 
-const Label = (props: Props): JSX.Element => {
+const Label: React.FC<Props> = (props) => {
     const { color = 'default', variant = 'ghost', children, ...other } = props;
     return (
-        <RootStyle styleProps={{ color, variant }} {...other}>
+        <RootStyle ownerState={{ color, variant }} {...other}>
             {children}
         </RootStyle>
     );

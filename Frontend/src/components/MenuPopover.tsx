@@ -38,7 +38,6 @@ const MenuPopover = (props: Props): JSX.Element => {
                     mt: 1.5,
                     ml: 0.5,
                     overflow: 'inherit',
-                    // boxShadow: (theme) => theme.customShadows.z20,
                     border: (theme) => `solid 1px ${theme.palette.grey[5008]}`,
                     width: 200
                 }

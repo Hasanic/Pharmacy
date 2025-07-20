@@ -45,8 +45,6 @@ const saleSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Auto-increment unique_id (starting from 1)
 saleSchema.plugin(AutoIncrement, {
   inc_field: "unique_id",
   start_seq: 1,

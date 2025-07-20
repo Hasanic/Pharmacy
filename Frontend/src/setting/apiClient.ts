@@ -4,7 +4,6 @@ import { getAuthToken, clearAuthToken } from './utils/tokenUtils';
 
 const apiClient: AxiosInstance = axios.create(apiConfig);
 
-// Request interceptor
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const token = getAuthToken();
@@ -28,7 +27,6 @@ apiClient.interceptors.request.use(
     }
 );
 
-// Response interceptor
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => response,
     async (error: AxiosError) => {

@@ -17,15 +17,12 @@ export const register = async (req, res) => {
   const { error } = paymentSchema.validate(req.body);
 
   if (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: error.details[0].message });
+    return res.status(400).json({ success: false, message: error.details[0].message });
   }
 
   try {
     const { sale_id, method, amount, payment_date } = req.body;
 
-    // Validate input
     if (!sale_id || !method || amount === undefined) {
       return res.status(400).json({
         success: false,
@@ -34,37 +31,33 @@ export const register = async (req, res) => {
     }
 
     if (!mongoose.Types.ObjectId.isValid(sale_id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Pass Valid Sale Value" });
+      return res.status(400).json({ success: false, message: "Pass Valid Sale Value" });
     }
 
-    // Check if sale exists
     const saleExists = await Sale.findById(sale_id);
     if (!saleExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Sale does not exist" });
+      return res.status(400).json({ success: false, message: "Sale does not exist" });
     }
 
-    if (saleExists.remianing < amount) {
+    if (saleExists.remaining < amount) {
       return res.status(400).json({
         success: false,
-        message: "Amount mus equla or less then remaining",
+        message: "Amount must be equal to or less than remaining",
       });
     }
-    let remianing = saleExists.remianing - amount;
+
+    let remaining = saleExists.remaining - amount;
     let status = utility.STATUS_SALES.INVOICE;
-    if (remianing == 0) {
+    if (remaining == 0) {
       status = utility.STATUS_SALES.PAID;
     }
 
-    const slaes = await Sale.findOneAndUpdate(
+    const sale = await Sale.findOneAndUpdate(
       { _id: new mongoose.Types.ObjectId(sale_id) },
-      { $set: { status, remianing } }
+      { $set: { status, remaining } }
     );
-    // Create new
-    if (slaes) {
+
+    if (sale) {
       const payment = new Payment({
         sale_id,
         method,
@@ -74,7 +67,6 @@ export const register = async (req, res) => {
 
       await payment.save();
 
-      // Return data
       return res.status(201).json({
         success: true,
         data: payment,
@@ -82,7 +74,7 @@ export const register = async (req, res) => {
     } else {
       return res.status(400).json({
         success: false,
-        message: "failed to Pay",
+        message: "Failed to record payment",
       });
     }
   } catch (error) {
@@ -98,22 +90,14 @@ export const register = async (req, res) => {
 export const getById = async (req, res) => {
   try {
     const unique_id = req.params.unique_id;
-    const paymentExist = await Payment.findOne({ unique_id }).populate(
-      "sale_id",
-      "reference_number" // Adjust based on your Sale model
-    );
+    const paymentExist = await Payment.findOne({ unique_id }).populate("sale_id", "reference_number");
 
     if (!paymentExist) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found.",
-      });
+      return res.status(404).json({ success: false, message: "Payment not found." });
     }
 
     const Data = await Payment.aggregate([
-      {
-        $match: { unique_id: parseInt(unique_id) },
-      },
+      { $match: { unique_id: parseInt(unique_id) } },
       {
         $lookup: {
           from: "sales",
@@ -122,9 +106,7 @@ export const getById = async (req, res) => {
           as: "sale",
         },
       },
-      {
-        $unwind: "$sale",
-      },
+      { $unwind: "$sale" },
       {
         $project: {
           _id: 1,
@@ -155,13 +137,10 @@ export const update = async (req, res) => {
     const paymentExist = await Payment.findOne({ unique_id });
 
     if (!paymentExist) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found.",
-      });
+      return res.status(404).json({ success: false, message: "Payment not found." });
     }
 
-    const updatedData = await Payment.findByIdAndUpdate(id, req.body, {
+    const updatedData = await Payment.findByIdAndUpdate(paymentExist._id, req.body, {
       new: true,
     }).populate("sale_id", "reference_number");
 
@@ -171,10 +150,7 @@ export const update = async (req, res) => {
       data: updatedData,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -184,24 +160,16 @@ export const deletePayment = async (req, res) => {
     const paymentExist = await Payment.findById(id);
 
     if (!paymentExist) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found.",
-      });
+      return res.status(404).json({ success: false, message: "Payment not found." });
     }
 
     await Payment.findByIdAndDelete(id);
-    res.status(200).json({
-      success: true,
-      message: "Payment deleted successfully.",
-    });
+    res.status(200).json({ success: true, message: "Payment deleted successfully." });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
 export const getAll = async (req, res) => {
   try {
     const page = parseInt(req.query.page);
@@ -211,11 +179,7 @@ export const getAll = async (req, res) => {
     const limit = page === 0 ? page : pageSize;
 
     const aggregationPipeline = [
-      {
-        $sort: {
-          _id: -1,
-        },
-      },
+      { $sort: { _id: -1 } },
       {
         $lookup: {
           from: "sales",
@@ -224,9 +188,7 @@ export const getAll = async (req, res) => {
           as: "sale",
         },
       },
-      {
-        $unwind: "$sale",
-      },
+      { $unwind: "$sale" },
       {
         $project: {
           _id: 1,
@@ -262,16 +224,8 @@ export const getAll = async (req, res) => {
 
     const Data = await Payment.aggregate(aggregationPipeline);
 
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
-      return res.status(404).json({
-        success: false,
-        message: "No payment records found",
-      });
+    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
+      return res.status(404).json({ success: false, message: "No payment records found" });
     }
 
     const responseData = Data[0];

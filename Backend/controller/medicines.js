@@ -19,9 +19,7 @@ const medicineSchema = Joi.object({
   stock_quantity: Joi.number().min(0).default(0),
   expiry_date: Joi.date().optional().allow(null),
   description: Joi.string().optional().allow("", null),
-  type: Joi.string()
-    .valid("Tablet", "Capsule", "Syrup", "Injection", "Other")
-    .default("Tablet"),
+  type: Joi.string().valid("Tablet", "Capsule", "Syrup", "Injection", "Other").default("Tablet"),
   image: Joi.string().optional().allow("", null),
   user_id: Joi.string().hex().length(24).optional().allow(null),
 });
@@ -145,13 +143,13 @@ export const getAllMedicines = async (req, res) => {
     res.status(200).json({
       code: 200,
       status: "OK",
-      data: medicinesWithImage,
       pagination: {
         page,
         pageSize,
         total,
         totalPages: Math.ceil(total / pageSize),
       },
+      data: medicinesWithImage,
     });
   } catch (error) {
     res.status(500).json({
@@ -227,24 +225,16 @@ export const updateMedicine = async (req, res) => {
       payload.image = req.file.filename;
       const oldMedicine = await Medicine.findById(medicineId);
       if (oldMedicine && oldMedicine.image) {
-        const oldImagePath = path.join(
-          __dirname,
-          "../uploads",
-          oldMedicine.image
-        );
+        const oldImagePath = path.join(__dirname, "../uploads", oldMedicine.image);
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath);
         }
       }
     }
 
-    const updatedMedicine = await Medicine.findByIdAndUpdate(
-      medicineId,
-      payload,
-      {
-        new: true,
-      }
-    );
+    const updatedMedicine = await Medicine.findByIdAndUpdate(medicineId, payload, {
+      new: true,
+    });
 
     if (!updatedMedicine) {
       return res.status(404).json({

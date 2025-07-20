@@ -73,8 +73,6 @@ const Login = (): JSX.Element => {
                         onSuccess={handleLoginSuccess}
                         onError={handleLoginError}
                     />
-
-                    {/* Mobile view */}
                     <MHidden width="smUp">
                         <Typography variant="body2" align="center" sx={{ mt: 3 }}>
                             Don't have an account?&nbsp;
@@ -83,8 +81,6 @@ const Login = (): JSX.Element => {
                             </Link>
                         </Typography>
                     </MHidden>
-
-                    {/* Desktop view */}
                     <MHidden width="smDown">
                         <Typography variant="body2" align="center" sx={{ mt: 3 }}>
                             Don't have an account?&nbsp;

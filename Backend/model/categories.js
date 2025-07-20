@@ -19,9 +19,6 @@ const categoriesSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-//hassan
-
-
 categoriesSchema.plugin(AutoIncrement, {
   inc_field: "unique_id",
   start_seq: 1,

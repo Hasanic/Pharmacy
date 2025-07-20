@@ -17,17 +17,13 @@ export const register = async (req, res) => {
   try {
     const { name } = req.body;
 
-    // Validate input
     if (!name) {
       return res
         .status(400)
         .json({ success: false, message: "All fields are required" });
     }
 
-    // Check if user exists
-    const RolesExists = await Roles.findOne({
-      name: name,
-    });
+    const RolesExists = await Roles.findOne({ name: name });
 
     if (RolesExists) {
       if (RolesExists.name === name) {
@@ -37,14 +33,10 @@ export const register = async (req, res) => {
       }
     }
 
-    // Create new Roles (using lowercase for the instance)
-    const roles = new Roles({
-      name: name,
-    });
+    const roles = new Roles({ name: name });
 
     await roles.save();
 
-    // Return data
     res.status(201).json({
       success: true,
       data: {
@@ -52,7 +44,6 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in Roles registration:", error);
     res.status(500).json({
       success: false,
       message: "unknown error",
@@ -93,12 +84,7 @@ export const getAll = async (req, res) => {
 
     const Data = await Roles.aggregate(aggregationPipeline);
 
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
+    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No Roles data found",
@@ -122,6 +108,7 @@ export const getAll = async (req, res) => {
     });
   }
 };
+
 export const GetById = async (req, res) => {
   try {
     const unique_id = req.params.unique_id;
@@ -149,13 +136,11 @@ export const update = async (req, res) => {
     const updatedData = await Roles.findByIdAndUpdate(id, req.body, {
       new: true,
     });
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Roles Updated successfully.",
-        updatedData: updatedData,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Roles Updated successfully.",
+      updatedData: updatedData,
+    });
   } catch (error) {
     res.status(500).json({ success: false, errorMessage: error.message });
   }
@@ -171,9 +156,7 @@ export const deleteRoles = async (req, res) => {
         .json({ success: false, message: "Roles not found." });
     }
     await Roles.findByIdAndDelete(id);
-    res
-      .status(200)
-      .json({ success: true, message: "Roles deleted successfully." });
+    res.status(200).json({ success: true, message: "Roles deleted successfully." });
   } catch (error) {
     res.status(500).json({ success: false, errorMessage: error.message });
   }

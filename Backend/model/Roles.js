@@ -6,12 +6,12 @@ const rolesSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true, 
-      unique: true, 
+      required: true,
+      unique: true,
     },
     user_id: {
       type: mongoose.Schema.ObjectId,
-      default:null
+      default: null,
     },
     unique_id: Number,
   },
@@ -19,8 +19,6 @@ const rolesSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-
 
 rolesSchema.plugin(AutoIncrement, {
   inc_field: "unique_id",

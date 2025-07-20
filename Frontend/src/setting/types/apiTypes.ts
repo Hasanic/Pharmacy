@@ -8,5 +8,4 @@ export interface ApiResponse<T> {
 export interface AppSettings {
     theme: 'light' | 'dark';
     notifications: boolean;
-    // Add other settings properties
 }

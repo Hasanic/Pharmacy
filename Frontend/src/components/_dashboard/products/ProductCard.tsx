@@ -27,7 +27,7 @@ const extractFilenameFromPath = (path: string): string | null => {
 
 const buildProductImageUrl = (filename: string): string => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    return `${baseUrl.replace(/\/api$/, '')}/api/products/image/${encodeURIComponent(filename)}`;
+    return `${baseUrl.replace(/\/api$/, '')}/api/medicines/image/${encodeURIComponent(filename)}`;
 };
 
 interface Props {

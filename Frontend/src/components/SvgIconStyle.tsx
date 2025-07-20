@@ -4,7 +4,7 @@ import { Box } from '@mui/material';
 interface Props {
     src: string;
     color: string;
-    sx?;
+    sx?: any;
 }
 
 const SvgIconStyle = (props: Props): JSX.Element => {

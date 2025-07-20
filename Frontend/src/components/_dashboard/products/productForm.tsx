@@ -52,7 +52,8 @@ interface Supplier {
     name: string;
 }
 
-type ProductType = 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
+// type ProductType = 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
+type ProductType = 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Other';
 
 interface FormValues {
     name: string;
@@ -81,9 +82,14 @@ const ProductForm = (): JSX.Element => {
     });
 
     const productTypes: { value: ProductType; label: string }[] = [
-        { value: 'Medicine', label: 'Medicine' },
-        { value: 'Equipment', label: 'Equipment' },
-        { value: 'Supplement', label: 'Supplement' },
+        // { value: 'Medicine', label: 'Medicine' },
+        // { value: 'Equipment', label: 'Equipment' },
+        // { value: 'Supplement', label: 'Supplement' },
+        // { value: 'Other', label: 'Other' }
+        { value: 'Tablet', label: 'Tablet' },
+        { value: 'Capsule', label: 'Capsule' },
+        { value: 'Syrup', label: 'Syrup' },
+        { value: 'Injection', label: 'Injection' },
         { value: 'Other', label: 'Other' }
     ];
 
@@ -136,7 +142,8 @@ const ProductForm = (): JSX.Element => {
             stock_quantity: 0,
             expiry_date: '',
             description: '',
-            type: 'Medicine',
+            // type: 'Medicine',
+            type: 'Tablet',
             image: ''
         },
         validationSchema: Yup.object().shape({
@@ -153,7 +160,8 @@ const ProductForm = (): JSX.Element => {
             expiry_date: Yup.date().nullable(),
             description: Yup.string().nullable(),
             type: Yup.mixed<ProductType>()
-                .oneOf(['Medicine', 'Equipment', 'Supplement', 'Other'])
+                .oneOf(['Tablet', 'Capsule', 'Syrup', 'Injection', 'Other'])
+                // .oneOf(['Medicine', 'Equipment', 'Supplement', 'Other'])
                 .required('Type is required'),
             image: Yup.string().nullable()
         }),

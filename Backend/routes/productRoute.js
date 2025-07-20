@@ -1,14 +1,3 @@
-// import * as product from "../controller/product.js";
-// import upload from "../middleware/multer.js";
-
-// export default function (app) {
-//   app.post("/api/products", upload.single("image"), product.createProduct);
-//   app.get("/api/products", product.getAllProducts);
-//   app.get("/api/products/:id", product.getProductById);
-//   app.put("/api/products/:id", upload.single("image"), product.updateProduct);
-//   app.delete("/api/products/:id", product.deleteProduct);
-// }
-
 import * as product from "../controller/product.js";
 import upload from "../middleware/multer.js";
 import path from 'path';
@@ -20,12 +9,9 @@ export default function (app) {
   app.get("/api/products/:id", product.getProductById);
   app.put("/api/products/:id", upload.single("image"), product.updateProduct);
   app.delete("/api/products/:id", product.deleteProduct);
-
-  // Add this new endpoint to serve product images
   app.get("/api/products/image/:filename", (req, res) => {
     try {
       const { filename } = req.params;
-      // Sanitize filename to prevent directory traversal
       const safeFilename = path.basename(filename);
       if (!safeFilename) return res.status(400).send('Invalid filename');
 

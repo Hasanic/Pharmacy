@@ -21,7 +21,6 @@ export const register = async (req, res) => {
   try {
     const { medicine_id, quantity, expiry_date } = req.body;
 
-    // Validate input
     if (!medicine_id || !quantity || !expiry_date) {
       return res.status(400).json({
         success: false,
@@ -35,7 +34,6 @@ export const register = async (req, res) => {
         .json({ success: false, message: "Pass Valid Medicine Value" });
     }
 
-    // Check if medicine exists
     const medicineExists = await Medicine.findById(medicine_id);
     if (!medicineExists) {
       return res
@@ -43,7 +41,6 @@ export const register = async (req, res) => {
         .json({ success: false, message: "Medicine does not exist" });
     }
 
-    // Create new inventory record
     const inventory = new Inventory({
       medicine_id,
       quantity,
@@ -52,7 +49,6 @@ export const register = async (req, res) => {
 
     await inventory.save();
 
-    // Return data
     res.status(201).json({
       success: true,
       data: inventory,
@@ -71,14 +67,11 @@ export const getAll = async (req, res) => {
   try {
     const page = parseInt(req.query.page);
     const pageSize = parseInt(process.env.rows_per_page) || 10;
-
     const skip = page === 0 ? 0 : (page - 1) * pageSize;
     const limit = page === 0 ? page : pageSize;
 
     const aggregationPipeline = [
-      {
-        $sort: { _id: -1 },
-      },
+      { $sort: { _id: -1 } },
       {
         $lookup: {
           from: "medicines",
@@ -87,9 +80,7 @@ export const getAll = async (req, res) => {
           as: "medicine",
         },
       },
-      {
-        $unwind: "$medicine",
-      },
+      { $unwind: "$medicine" },
       {
         $project: {
           _id: 1,
@@ -125,12 +116,7 @@ export const getAll = async (req, res) => {
 
     const Data = await Inventory.aggregate(aggregationPipeline);
 
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
+    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No inventory data found",
@@ -171,9 +157,7 @@ export const getById = async (req, res) => {
     }
 
     const Data = await Inventory.aggregate([
-      {
-        $match: { unique_id: parseInt(unique_id) },
-      },
+      { $match: { unique_id: parseInt(unique_id) } },
       {
         $lookup: {
           from: "medicines",
@@ -182,9 +166,7 @@ export const getById = async (req, res) => {
           as: "medicine",
         },
       },
-      {
-        $unwind: "$medicine",
-      },
+      { $unwind: "$medicine" },
       {
         $project: {
           _id: 1,

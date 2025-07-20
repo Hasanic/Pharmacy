@@ -22,7 +22,7 @@ const HeaderStyle = styled('header')(({ theme }) => ({
 }));
 
 interface Props {
-    children?;
+    children?: any;
 }
 
 const AuthLayout = (props: Props): JSX.Element => {

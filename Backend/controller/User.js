@@ -4,15 +4,15 @@ import JWT from "jsonwebtoken";
 import Role from "../model/Roles.js";
 import * as utility from "../utilities.js";
 import mongoose from "mongoose";
+
 const userSchema = Joi.object({
   username: Joi.string().min(3).max(100).required(),
-  password: Joi.string().required().messages({}),
-  role_id: Joi.string().optional().messages({}),
+  password: Joi.string().required(),
+  role_id: Joi.string().optional(),
 });
 
 export const register = async (req, res) => {
   const { error } = userSchema.validate(req.body);
-
   if (error) {
     return res
       .status(400)
@@ -21,24 +21,20 @@ export const register = async (req, res) => {
 
   try {
     const { username, password, role_id } = req.body;
-
     if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Username and password are required",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Username and password are required",
+        });
     }
 
-    const userExists = await User.findOne({
-      username: username.toLowerCase(),
-    });
-
-    if (userExists) {
-      if (userExists.username === username.toLowerCase()) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Username already exists" });
-      }
+    const userExists = await User.findOne({ username: username.toLowerCase() });
+    if (userExists && userExists.username === username.toLowerCase()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Username already exists" });
     }
 
     if (role_id) {
@@ -66,12 +62,9 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in user registration:", error);
-    res.status(500).json({
-      success: false,
-      message: "unknown error",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ success: false, message: "unknown error", error: error.message });
   }
 };
 
@@ -79,7 +72,6 @@ export const getAll = async (req, res) => {
   try {
     const page = parseInt(req.query.page);
     const pageSize = parseInt(process.env.rows_per_page) || 10;
-
     const skip = page === 0 ? 0 : (page - 1) * pageSize;
     const limit = page === 0 ? page : pageSize;
 
@@ -127,28 +119,6 @@ export const getAll = async (req, res) => {
       },
     ];
 
-    // const aggregationPipeline = [
-    //   { $sort: { _id: -1 } },
-    //   {
-    //     $facet: {
-    //       metadata: [{ $count: "total" }],
-    //       data: [{ $skip: skip }, { $limit: limit }],
-    //     },
-    //   },
-    //   {
-    //     $project: {
-    //       data: 1,
-    //       total: { $arrayElemAt: ["$metadata.total", 0] },
-    //       currentPage: { $literal: page },
-    //       totalPages: {
-    //         $ceil: {
-    //           $divide: [{ $arrayElemAt: ["$metadata.total", 0] }, pageSize],
-    //         },
-    //       },
-    //     },
-    //   },
-    // ];
-
     const Data = await User.aggregate(aggregationPipeline);
 
     if (
@@ -157,10 +127,9 @@ export const getAll = async (req, res) => {
       !Data[0].data ||
       Data[0].data.length === 0
     ) {
-      return res.status(404).json({
-        success: false,
-        message: "No users found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "No users found" });
     }
 
     const responseData = Data[0];
@@ -174,10 +143,12 @@ export const getAll = async (req, res) => {
       data: responseData.data,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
   }
 };
 
@@ -192,7 +163,6 @@ export const GetById = async (req, res) => {
     }
 
     const userExist = await User.findById(_id);
-
     if (!userExist) {
       return res
         .status(404)
@@ -236,6 +206,7 @@ export const update = async (req, res) => {
       new: true,
       select: "_id username password user_id createdAt updatedAt unique_id",
     });
+
     res.status(200).json({
       success: true,
       message: "User Updated successfully.",
@@ -255,6 +226,7 @@ export const deleteUser = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found." });
     }
+
     await User.findByIdAndDelete(id);
     res
       .status(200)
@@ -293,32 +265,32 @@ export const login = async (req, res) => {
     ]);
 
     if (users.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
     }
 
     const user = users[0];
-
     const isPasswordValid = await utility.verifyPassword(
       password,
       user.password
     );
     if (!isPasswordValid) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
     }
+
     const payload = {
       id: user._id,
       username: user.username,
       role: user?.User_Role?.name?.toLowerCase(),
     };
+
     const token = JWT.sign(payload, process.env.JWT_SECRET_KEY, {
       expiresIn: "5d",
     });
+
     return res.status(200).json({
       success: true,
       token: token,

@@ -13,17 +13,13 @@ const prescriptionSchema = Joi.object({
 
 export const register = async (req, res) => {
   const { error } = prescriptionSchema.validate(req.body);
-
   if (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: error.details[0].message });
+    return res.status(400).json({ success: false, message: error.details[0].message });
   }
 
   try {
     const { customer_id, doctor_id, date, notes } = req.body;
 
-    // Validate input
     if (!customer_id || !doctor_id || !date) {
       return res.status(400).json({
         success: false,
@@ -32,34 +28,23 @@ export const register = async (req, res) => {
     }
 
     if (!mongoose.Types.ObjectId.isValid(customer_id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Pass Valid Customer Value" });
+      return res.status(400).json({ success: false, message: "Pass Valid Customer Value" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(doctor_id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Pass Valid Doctor Value" });
+      return res.status(400).json({ success: false, message: "Pass Valid Doctor Value" });
     }
 
-    // Check if customer exists
     const customerExists = await Customer.findById(customer_id);
     if (!customerExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Customer does not exist" });
+      return res.status(400).json({ success: false, message: "Customer does not exist" });
     }
 
-    // Check if doctor exists
     const doctorExists = await Doctor.findById(doctor_id);
     if (!doctorExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Doctor does not exist" });
+      return res.status(400).json({ success: false, message: "Doctor does not exist" });
     }
 
-    // Create new prescription
     const prescription = new Prescription({
       customer_id,
       doctor_id,
@@ -69,13 +54,11 @@ export const register = async (req, res) => {
 
     await prescription.save();
 
-    // Return data
     res.status(201).json({
       success: true,
       data: prescription,
     });
   } catch (error) {
-    console.error("Error in Prescription registration:", error);
     res.status(500).json({
       success: false,
       message: "Unknown error occurred",
@@ -86,9 +69,8 @@ export const register = async (req, res) => {
 
 export const getAll = async (req, res) => {
   try {
-     const page = parseInt(req.query.page);
+    const page = parseInt(req.query.page);
     const pageSize = parseInt(process.env.rows_per_page) || 10;
-
     const skip = page === 0 ? 0 : (page - 1) * pageSize;
     const limit = page === 0 ? page : pageSize;
 
@@ -102,9 +84,7 @@ export const getAll = async (req, res) => {
           as: "customer",
         },
       },
-      {
-        $unwind: "$customer",
-      },
+      { $unwind: "$customer" },
       {
         $lookup: {
           from: "doctors",
@@ -113,9 +93,7 @@ export const getAll = async (req, res) => {
           as: "doctor",
         },
       },
-      {
-        $unwind: "$doctor",
-      },
+      { $unwind: "$doctor" },
       {
         $facet: {
           metadata: [{ $count: "total" }],
@@ -154,12 +132,7 @@ export const getAll = async (req, res) => {
 
     const Data = await Prescription.aggregate(aggregationPipeline);
 
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
+    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No Prescription data found",
@@ -199,9 +172,7 @@ export const getById = async (req, res) => {
     }
 
     const Data = await Prescription.aggregate([
-      {
-        $match: { unique_id: parseInt(unique_id) },
-      },
+      { $match: { unique_id: parseInt(unique_id) } },
       {
         $lookup: {
           from: "customers",
@@ -210,9 +181,7 @@ export const getById = async (req, res) => {
           as: "customer",
         },
       },
-      {
-        $unwind: "$customer",
-      },
+      { $unwind: "$customer" },
       {
         $lookup: {
           from: "doctors",
@@ -221,9 +190,7 @@ export const getById = async (req, res) => {
           as: "doctor",
         },
       },
-      {
-        $unwind: "$doctor",
-      },
+      { $unwind: "$doctor" },
       {
         $project: {
           _id: 1,

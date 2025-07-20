@@ -91,7 +91,6 @@ const AccountPopover = (): JSX.Element => {
     const handleLogout = async () => {
         setLoading(true);
         try {
-            // Add any API logout calls here if needed
             clearAuthToken();
             navigate('/login', { replace: true });
         } finally {

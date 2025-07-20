@@ -3,7 +3,7 @@ import { Paper, Typography } from '@mui/material';
 
 interface SearchNotFoundProps {
     searchQuery: string;
-    other?;
+    other?: any;
 }
 
 const SearchNotFound = (props: SearchNotFoundProps): JSX.Element => {

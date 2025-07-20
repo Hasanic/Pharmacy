@@ -4,31 +4,42 @@ import { NavLink as RouterLink, matchPath, useLocation } from 'react-router-dom'
 import arrowIosForwardFill from '@iconify/icons-eva/arrow-ios-forward-fill';
 import arrowIosDownwardFill from '@iconify/icons-eva/arrow-ios-downward-fill';
 import { alpha, useTheme, styled } from '@mui/material/styles';
-import { Box, List, Collapse, ListItemText, ListItemIcon, ListItemButton } from '@mui/material';
+import {
+    Box,
+    List,
+    Collapse,
+    ListItemText,
+    ListItemIcon,
+    ListItemButton,
+    ListItemButtonProps
+} from '@mui/material';
 import { NavItemConfig } from '@/models';
 
-const ListItemStyle = styled((props) => <ListItemButton disableGutters {...props} />)(
-    ({ theme }) => ({
-        ...theme.typography.body2,
-        height: 48,
-        position: 'relative',
-        textTransform: 'capitalize',
-        paddingLeft: theme.spacing(5),
-        paddingRight: theme.spacing(2.5),
-        color: theme.palette.text.secondary,
-        '&:before': {
-            top: 0,
-            right: 0,
-            width: 3,
-            bottom: 0,
-            display: 'none',
-            position: 'absolute',
-            borderTopLeftRadius: 4,
-            borderBottomLeftRadius: 4,
-            backgroundColor: theme.palette.primary.main
-        }
-    })
-);
+interface ListItemStyleProps extends ListItemButtonProps {
+    component?: React.ElementType;
+    to?: string;
+}
+
+const ListItemStyle = styled(ListItemButton)<ListItemStyleProps>(({ theme }) => ({
+    ...theme.typography.body2,
+    height: 48,
+    position: 'relative',
+    textTransform: 'capitalize',
+    paddingLeft: theme.spacing(5),
+    paddingRight: theme.spacing(2.5),
+    color: theme.palette.text.secondary,
+    '&:before': {
+        top: 0,
+        right: 0,
+        width: 3,
+        bottom: 0,
+        display: 'none',
+        position: 'absolute',
+        borderTopLeftRadius: 4,
+        borderBottomLeftRadius: 4,
+        backgroundColor: theme.palette.primary.main
+    }
+}));
 
 const ListItemIconStyle = styled(ListItemIcon)({
     width: 22,
@@ -43,8 +54,7 @@ interface NavItemProps {
     active: (path: string) => boolean;
 }
 
-function NavItem(props: NavItemProps) {
-    const { item, active } = props;
+function NavItem({ item, active }: NavItemProps) {
     const theme = useTheme();
     const isActiveRoot = active(item.path);
     const { title, path, icon, info, children } = item;
@@ -145,15 +155,14 @@ function NavItem(props: NavItemProps) {
     );
 }
 
-interface Props {
+interface NavSectionProps {
     navConfig: NavItemConfig[];
-    other?;
+    [key: string]: any;
 }
 
-const NavSection = (props: Props): JSX.Element => {
-    const { navConfig, ...other } = props;
+const NavSection: React.FC<NavSectionProps> = ({ navConfig, ...other }) => {
     const { pathname } = useLocation();
-    const match = (path) => (path ? !!matchPath({ path, end: false }, pathname) : false);
+    const match = (path: string) => (path ? !!matchPath({ path, end: false }, pathname) : false);
 
     return (
         <Box {...other}>

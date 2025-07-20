@@ -7,26 +7,25 @@ const paymentSchema = new mongoose.Schema(
     sale_id: {
       type: mongoose.Schema.ObjectId,
       required: true,
-      // ref: "Sale" // Uncomment if you have a Sale model to reference
     },
     method: {
       type: String,
       required: true,
-      enum: ["Cash", "Credit Card", "Debit Card", "Bank Transfer", "Other"] // Add other payment methods as needed
+      enum: ["Cash", "Credit Card", "Debit Card", "Bank Transfer", "Other"],
     },
     amount: {
       type: Number,
       required: true,
-      min: 0
+      min: 0,
     },
     payment_date: {
       type: Date,
       required: true,
-      default: Date.now
+      default: Date.now,
     },
     user_id: {
       type: mongoose.Schema.ObjectId,
-      default: null
+      default: null,
     },
     unique_id: Number,
   },

@@ -12,49 +12,32 @@ export const register = async (req, res) => {
   const { error } = customerSchema.validate(req.body);
 
   if (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: error.details[0].message });
+    return res.status(400).json({ success: false, message: error.details[0].message });
   }
 
   try {
     const { name, phone, address } = req.body;
 
-    // Validate input
     if (!name || !phone || !address) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
-    // Check if customer exists
     const customerExists = await Customer.findOne({
-      $or: [{ name: name }, { phone: phone }],
+      $or: [{ name }, { phone }],
     });
 
     if (customerExists) {
       if (customerExists.name === name) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Name already exists" });
+        return res.status(400).json({ success: false, message: "Name already exists" });
       }
       if (customerExists.phone === phone) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Phone number already exists" });
+        return res.status(400).json({ success: false, message: "Phone number already exists" });
       }
     }
 
-    // Create new customer
-    const customer = new Customer({
-      name: name,
-      phone: phone,
-      address: address,
-    });
-
+    const customer = new Customer({ name, phone, address });
     await customer.save();
 
-    // Return data
     res.status(201).json({
       success: true,
       data: {
@@ -64,7 +47,6 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in Customer registration:", error);
     res.status(500).json({
       success: false,
       message: "unknown error",
@@ -72,11 +54,11 @@ export const register = async (req, res) => {
     });
   }
 };
+
 export const getAll = async (req, res) => {
   try {
     const page = parseInt(req.query.page);
     const pageSize = parseInt(process.env.rows_per_page) || 10;
-
     const skip = page === 0 ? 0 : (page - 1) * pageSize;
     const limit = page === 0 ? page : pageSize;
 
@@ -104,16 +86,8 @@ export const getAll = async (req, res) => {
 
     const Data = await Customer.aggregate(aggregationPipeline);
 
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
-      return res.status(404).json({
-        success: false,
-        message: "No customers found",
-      });
+    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
+      return res.status(404).json({ success: false, message: "No customers found" });
     }
 
     const responseData = Data[0];
@@ -123,7 +97,7 @@ export const getAll = async (req, res) => {
       page: responseData.currentPage,
       rows: responseData.total,
       pages: responseData.totalPages,
-      pageSize: pageSize,
+      pageSize,
       data: responseData.data,
     });
   } catch (error) {
@@ -168,23 +142,20 @@ export const getById = async (req, res) => {
   }
 };
 
-
 export const update = async (req, res) => {
   try {
     const id = req.params.id;
     const customerExist = await Customer.findById(id);
     if (!customerExist) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer not found." });
+      return res.status(404).json({ success: false, message: "Customer not found." });
     }
-    const updatedData = await Customer.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
+
+    const updatedData = await Customer.findByIdAndUpdate(id, req.body, { new: true });
+
     res.status(200).json({
       success: true,
       message: "Customer updated successfully.",
-      updatedData: updatedData,
+      updatedData,
     });
   } catch (error) {
     res.status(500).json({ success: false, errorMessage: error.message });
@@ -196,14 +167,11 @@ export const deleteCustomer = async (req, res) => {
     const id = req.params.id;
     const customerExist = await Customer.findById(id);
     if (!customerExist) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer not found." });
+      return res.status(404).json({ success: false, message: "Customer not found." });
     }
+
     await Customer.findByIdAndDelete(id);
-    res
-      .status(200)
-      .json({ success: true, message: "Customer deleted successfully." });
+    res.status(200).json({ success: true, message: "Customer deleted successfully." });
   } catch (error) {
     res.status(500).json({ success: false, errorMessage: error.message });
   }

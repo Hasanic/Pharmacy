@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import LogoImage from '@/assets/images/logo1.png';
 
 interface Props {
-    sx?;
+    sx?: any;
 }
 
 const Logo = (props: Props): JSX.Element => {

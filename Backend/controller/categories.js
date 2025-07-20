@@ -8,44 +8,25 @@ const categoriesSchema = Joi.object({
 
 export const register = async (req, res) => {
   const { error } = categoriesSchema.validate(req.body);
-
   if (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: error.details[0].message });
+    return res.status(400).json({ success: false, message: error.details[0].message });
   }
 
   try {
     const { name } = req.body;
 
-    // Validate input
     if (!name) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
-    // Check if user exists
-    const categoryExists = await Category.findOne({
-      name: name,
-    });
-
-    if (categoryExists) {
-      if (categoryExists.name === name) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Name already exists" });
-      }
+    const categoryExists = await Category.findOne({ name });
+    if (categoryExists && categoryExists.name === name) {
+      return res.status(400).json({ success: false, message: "Name already exists" });
     }
 
-    // Create new category
-    const category = new Category({
-      name: name,
-    });
-
+    const category = new Category({ name });
     await category.save();
 
-    // Return data
     res.status(201).json({
       success: true,
       data: {
@@ -53,7 +34,6 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in Category registration:", error);
     res.status(500).json({
       success: false,
       message: "unknown error",
@@ -64,12 +44,10 @@ export const register = async (req, res) => {
 
 export const getAll = async (req, res) => {
   try {
-     
-    const page = parseInt(req.query.page);  
+    const page = parseInt(req.query.page);
     const pageSize = parseInt(process.env.rows_per_page) || 10;
-    
     const skip = page === 0 ? 0 : (page - 1) * pageSize;
-    const limit = page === 0 ? page : pageSize; 
+    const limit = page === 0 ? page : pageSize;
 
     const aggregationPipeline = [
       { $sort: { _id: 1 } },
@@ -78,7 +56,7 @@ export const getAll = async (req, res) => {
           metadata: [{ $count: "total" }],
           data: [
             { $skip: skip },
-            { $limit: limit }, 
+            { $limit: limit },
           ],
         },
       },
@@ -92,22 +70,17 @@ export const getAll = async (req, res) => {
               $divide: [{ $arrayElemAt: ["$metadata.total", 0] }, pageSize],
             },
           },
-        }, 
+        },
       },
     ];
 
     const Data = await Category.aggregate(aggregationPipeline);
 
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
+    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No categories found",
-        data:Data[0].data
+        data: Data[0].data,
       });
     }
 
@@ -118,15 +91,12 @@ export const getAll = async (req, res) => {
     res.status(200).json({
       success: true,
       page: currentPage,
-      rows: responseData.total, 
-        pages: pages,
-        pageSize: pageSize,
-      // },
-      
+      rows: responseData.total,
+      pages: pages,
+      pageSize: pageSize,
       data: responseData.data,
     });
   } catch (error) {
-    // console.error("Error in getAllCategories:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Internal server error",
@@ -167,41 +137,21 @@ export const GetById = async (req, res) => {
   }
 };
 
-
-// export const GetById = async (req, res) => {
-//   try {
-//     const unique_id = req.params.unique_id;
-//     const categoryExist = await Category.findOne({ unique_id });
-//     if (!categoryExist) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Category not found." });
-//     }
-//     res.status(200).json({ success: true, categoryExist });
-//   } catch (error) {
-//     res.status(500).json({ success: false, Message: error.message });
-//   }
-// };
-
 export const update = async (req, res) => {
   try {
     const id = req.params.id;
     const categoryExist = await Category.findById(id);
     if (!categoryExist) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Category not found." });
+      return res.status(404).json({ success: false, message: "Category not found." });
     }
-    const updatedData = await Category.findByIdAndUpdate(id, req.body, {
-      new: true,
+
+    const updatedData = await Category.findByIdAndUpdate(id, req.body, { new: true });
+
+    res.status(200).json({
+      success: true,
+      message: "Category Updated successfully.",
+      updatedData,
     });
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Category Updated successfully.",
-        updatedData: updatedData,
-      });
   } catch (error) {
     res.status(500).json({ success: false, errorMessage: error.message });
   }
@@ -212,14 +162,11 @@ export const deletecategory = async (req, res) => {
     const id = req.params.id;
     const categoryExist = await Category.findById(id);
     if (!categoryExist) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Category not found." });
+      return res.status(404).json({ success: false, message: "Category not found." });
     }
+
     await Category.findByIdAndDelete(id);
-    res
-      .status(200)
-      .json({ success: true, message: "Category deleted successfully." });
+    res.status(200).json({ success: true, message: "Category deleted successfully." });
   } catch (error) {
     res.status(500).json({ success: false, errorMessage: error.message });
   }

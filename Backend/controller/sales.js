@@ -24,16 +24,12 @@ export const register = async (req, res) => {
 
   try {
     const { medicine_id, customer_id, quantity, sale_date } = req.body;
-
-    // Validate input
     if (!medicine_id || !customer_id || !quantity || !sale_date) {
       return res.status(400).json({
         success: false,
         message: "All required fields must be provided",
       });
     }
-
-    // Validate ObjectIds
     if (!mongoose.Types.ObjectId.isValid(medicine_id)) {
       return res
         .status(400)
@@ -44,28 +40,21 @@ export const register = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid Customer ID" });
     }
-
-    // Check if medicine exists
     const medicine = await Medicine.findById(medicine_id);
     if (!medicine) {
       return res
         .status(404)
         .json({ success: false, message: "Medicine not found" });
     }
-
-    // Check if customer exists
     const customerExists = await Customer.findById(customer_id);
     if (!customerExists) {
       return res
         .status(404)
         .json({ success: false, message: "Customer not found" });
     }
-
-    // Calculate total amount
     const total_amount = medicine.price * quantity;
     const remianing = medicine.price * quantity;
 
-    // Create new sale
     const sale = new Sale({
       medicine_id,
       customer_id,
@@ -78,7 +67,6 @@ export const register = async (req, res) => {
 
     await sale.save();
 
-    // Return data
     res.status(201).json({
       success: true,
       data: sale,
@@ -198,7 +186,6 @@ export const getAll = async (req, res) => {
 
 export const getById = async (req, res) => {
   try {
-    // const id = req.params.id;
     const unique_id = req.params.unique_id;
     const saleExist = await Sale.findOne({ unique_id });
 
@@ -211,7 +198,6 @@ export const getById = async (req, res) => {
 
     const Data = await Sale.aggregate([
       {
-        // $match: { _id: mongoose.Types.ObjectId(id) },
         $match: { unique_id: parseInt(unique_id) },
       },
       {
@@ -272,7 +258,6 @@ export const update = async (req, res) => {
       });
     }
 
-    // If quantity or medicine_id is being updated, recalculate total_amount
     if (req.body.quantity || req.body.medicine_id) {
       const medicine_id = req.body.medicine_id || saleExist.medicine_id;
       const quantity = req.body.quantity || saleExist.quantity;
@@ -389,7 +374,7 @@ export const getAllPaid = async (req, res) => {
                 sale_date: 1,
                 unique_id: 1,
                 status: 1,
-                remaining: 1, // Fixed typo from "remianing" to "remaining"
+                remaining: 1,
                 medicine_name: "$medicine.name",
                 customer_name: "$customer.name",
                 unit_price: "$medicine.price",
@@ -497,7 +482,7 @@ export const getAllInvoice = async (req, res) => {
                 sale_date: 1,
                 unique_id: 1,
                 status: 1,
-                remaining: 1, // Fixed typo from "remianing" to "remaining"
+                remaining: 1,
                 medicine_name: "$medicine.name",
                 customer_name: "$customer.name",
                 unit_price: "$medicine.price",
@@ -557,11 +542,10 @@ export const getSalesByDate = async (req, res) => {
     const { startDate, endDate } = req.body;
     const page = parseInt(req.query.page);
     const pageSize = parseInt(process.env.rows_per_page) || 10;
-    
+
     const skip = page === 0 ? 0 : (page - 1) * pageSize;
     const limit = page === 0 ? page : pageSize;
 
-    // Validate date parameters
     if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
@@ -634,10 +618,7 @@ export const getSalesByDate = async (req, res) => {
       {
         $facet: {
           metadata: [{ $count: "total" }],
-          data: [
-            { $skip: skip },
-            { $limit: limit },
-          ],
+          data: [{ $skip: skip }, { $limit: limit }],
         },
       },
       {
@@ -656,7 +637,12 @@ export const getSalesByDate = async (req, res) => {
 
     const Data = await Sale.aggregate(aggregationPipeline);
 
-    if (!Data || Data.length === 0 || !Data[0].data || Data[0].data.length === 0) {
+    if (
+      !Data ||
+      Data.length === 0 ||
+      !Data[0].data ||
+      Data[0].data.length === 0
+    ) {
       return res.status(404).json({
         success: false,
         message: "No sales data found for the specified date range",
@@ -680,5 +666,3 @@ export const getSalesByDate = async (req, res) => {
     });
   }
 };
-
- 

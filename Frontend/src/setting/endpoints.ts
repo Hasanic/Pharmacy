@@ -57,24 +57,26 @@ const API = {
     },
     products: {
         create: (data: FormData | CreateProductPayload): Promise<ApiResponse<Product>> =>
-            apiClient.post('/products', data, {
+            apiClient.post('/medicines', data, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             }),
-
-        getAll: (): Promise<ApiResponse<Product[]>> => apiClient.get('/products'),
+        getAll: (
+            page = 1
+        ): Promise<ApiResponse<PaginatedResponse<{ _id: string; name: string }>>> =>
+            apiClient.get('/medicines', { params: { page } }),
 
         getById: (productId: string): Promise<ApiResponse<Product>> =>
-            apiClient.get(`/products/${productId}`),
+            apiClient.get(`/medicines/${productId}`),
 
         update: (
             productId: string,
             data: Partial<CreateProductPayload>
-        ): Promise<ApiResponse<Product>> => apiClient.put(`/products/${productId}`, data),
+        ): Promise<ApiResponse<Product>> => apiClient.put(`/medicines/${productId}`, data),
 
         delete: (productId: string): Promise<ApiResponse<void>> =>
-            apiClient.delete(`/products/${productId}`)
+            apiClient.delete(`/medicines/${productId}`)
     },
     categories: {
         getAll: (

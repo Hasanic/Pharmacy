@@ -17,16 +17,13 @@ const productSchema = Joi.object({
   stock_quantity: Joi.number().min(0).default(0),
   expiry_date: Joi.date().optional().allow(null),
   description: Joi.string().optional().allow("", null),
-  type: Joi.string()
-    .valid("Medicine", "Equipment", "Supplement", "Other")
-    .default("Medicine"),
+  type: Joi.string().valid("Medicine", "Equipment", "Supplement", "Other").default("Medicine"),
   image: Joi.string().optional().allow("", null),
   user_id: Joi.string().hex().length(24).optional().allow(null),
 });
 
 export const createProduct = async (req, res) => {
   let uploadedFilePath = null;
-
   try {
     const payload = {
       ...req.body,
@@ -65,8 +62,7 @@ export const createProduct = async (req, res) => {
       return res.status(409).json({
         code: 409,
         status: "Conflict",
-        message:
-          "A product with this name already exists for the same category and supplier",
+        message: "A product with this name already exists for the same category and supplier",
       });
     }
 
@@ -112,12 +108,7 @@ export const getAllProducts = async (req, res) => {
     const products = await Product.find({})
       .populate("category_id", "name")
       .populate("supplier_id", "name")
-      .select({
-        __v: 0,
-        createdAt: 0,
-        updatedAt: 0,
-        unique_id: 0,
-      })
+      .select({ __v: 0, createdAt: 0, updatedAt: 0, unique_id: 0 })
       .lean();
 
     if (!products || products.length === 0) {
@@ -154,12 +145,7 @@ export const getProductById = async (req, res) => {
     const product = await Product.findById(productId)
       .populate("category_id", "name")
       .populate("supplier_id", "name")
-      .select({
-        __v: 0,
-        createdAt: 0,
-        updatedAt: 0,
-        unique_id: 0,
-      });
+      .select({ __v: 0, createdAt: 0, updatedAt: 0, unique_id: 0 });
 
     if (!product) {
       return res.status(404).json({
@@ -207,11 +193,7 @@ export const updateProduct = async (req, res) => {
       payload.image = req.file.filename;
       const oldProduct = await Product.findById(productId);
       if (oldProduct && oldProduct.image) {
-        const oldImagePath = path.join(
-          __dirname,
-          "../uploads",
-          oldProduct.image
-        );
+        const oldImagePath = path.join(__dirname, "../uploads", oldProduct.image);
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath);
         }

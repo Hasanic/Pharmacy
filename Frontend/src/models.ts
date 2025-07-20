@@ -28,7 +28,7 @@ export interface IAccount {
     role?: string;
     photoURL: string;
     user_id: string | null;
-    [key: string]: any; // for additional token claims
+    [key: string]: any;
 }
 
 export interface IProduct {
@@ -36,14 +36,12 @@ export interface IProduct {
     name: string;
     price: number;
     unit: string;
-    status?: string; // UI-specific field
-    priceSale?: number | null; // UI-specific field
+    status?: string;
+    priceSale?: number | null;
 
-    // API fields (can be string or object)
     category_id: string | { _id: string; name: string };
     supplier_id: string | { _id: string; name: string };
 
-    // Optional fields
     stock_quantity?: number;
     expiry_date?: Date | null;
     description?: string;
