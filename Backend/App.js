@@ -30,7 +30,7 @@ const configaration = (app) => {
   // app.use("/api", category);
 
   Auth(app);
-  // app.use(utility.verifySession);
+  app.use(utility.verifySession);
   // app.use(utility.rolePermission);
   //   app.use(utility.ensureAuthenticated);
   User(app);

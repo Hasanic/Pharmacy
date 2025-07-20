@@ -2,298 +2,267 @@ import Medicine from "../model/medicines.js";
 import Category from "../model/categories.js";
 import Joi from "joi";
 import mongoose from "mongoose";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const medicineSchema = Joi.object({
   name: Joi.string().min(3).max(100).required(),
-  category_id: Joi.string().required(),
-  supplier_id: Joi.string().required(),
+  category_id: Joi.string().hex().length(24).required(),
+  supplier_id: Joi.string().hex().length(24).required(),
   price: Joi.number().min(0).required(),
   unit: Joi.string().required(),
-  description: Joi.string().allow("").optional(),
+  stock_quantity: Joi.number().min(0).default(0),
+  expiry_date: Joi.date().optional().allow(null),
+  description: Joi.string().optional().allow("", null),
+  type: Joi.string()
+    .valid("Tablet", "Capsule", "Syrup", "Injection", "Other")
+    .default("Tablet"),
+  image: Joi.string().optional().allow("", null),
+  user_id: Joi.string().hex().length(24).optional().allow(null),
 });
 
-export const register = async (req, res) => {
-  const { error } = medicineSchema.validate(req.body);
-
-  if (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: error.details[0].message });
-  }
+export const createMedicine = async (req, res) => {
+  let uploadedFilePath = null;
 
   try {
-    const { name, category_id, supplier_id, price, unit, description } =
-      req.body;
+    const payload = {
+      ...req.body,
+      price: parseFloat(req.body.price),
+      stock_quantity: parseInt(req.body.stock_quantity) || 0,
+      expiry_date: req.body.expiry_date ? new Date(req.body.expiry_date) : null,
+    };
 
-    // Validate input
-    if (!name || !category_id || !supplier_id || !price || !unit) {
+    if (req.file) {
+      payload.image = req.file.filename;
+      uploadedFilePath = path.join(req.file.destination, req.file.filename);
+    }
+
+    const { error } = medicineSchema.validate(payload);
+    if (error) {
+      if (uploadedFilePath) {
+        fs.unlinkSync(uploadedFilePath);
+      }
       return res.status(400).json({
-        success: false,
-        message: "All required fields must be provided",
+        code: 400,
+        status: "Bad Request",
+        message: error.details[0].message,
       });
     }
-    if (!mongoose.Types.ObjectId.isValid(category_id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Pass Valid Category Vlaue" });
-    }
-    if (!mongoose.Types.ObjectId.isValid(supplier_id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Pass Valid Suplier Vlaue" });
-    }
 
-    // Check if category exists
-    const categoryExists = await Category.findById(category_id);
-    if (!categoryExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Category does not exist" });
-    }
-
-    // Check if medicine exists
-    const medicineExists = await Medicine.findOne({ name });
-    if (medicineExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Medicine name already exists" });
-    }
-
-    // Create new medicine
-    const medicine = new Medicine({
-      name,
-      category_id,
-      supplier_id,
-      price,
-      unit,
-      description: description || "",
+    const existingMedicine = await Medicine.findOne({
+      name: payload.name,
+      category_id: payload.category_id,
     });
 
+    if (existingMedicine) {
+      if (uploadedFilePath) {
+        fs.unlinkSync(uploadedFilePath);
+      }
+      return res.status(409).json({
+        code: 409,
+        status: "Conflict",
+        message: "A medicine with this name already exists in this category",
+      });
+    }
+
+    const medicine = new Medicine(payload);
     await medicine.save();
 
-    // Return data
     res.status(201).json({
-      success: true,
+      code: 201,
+      status: "Created",
       data: medicine,
     });
   } catch (error) {
-    console.error("Error in Medicine registration:", error);
-    res.status(500).json({
-      success: false,
-      message: "Unknown error occurred",
-      error: error.message,
-    });
-  }
-};
+    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+      fs.unlinkSync(uploadedFilePath);
+    }
 
-export const getAll = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page);
-    const pageSize = parseInt(process.env.rows_per_page) || 10;
-
-    const skip = page === 0 ? 0 : (page - 1) * pageSize;
-    const limit = page === 0 ? page : pageSize;
-
-    const aggregationPipeline = [
-      { $sort: { _id: -1 } },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category_id",
-          foreignField: "_id",
-          as: "category",
-        },
-      },
-      {
-        $unwind: "$category",
-      },
-      {
-        $lookup: {
-          from: "suppliers",
-          localField: "supplier_id",
-          foreignField: "_id",
-          as: "suppliers",
-        },
-      },
-      {
-        $unwind: "$suppliers",
-      },
-      {
-        $facet: {
-          metadata: [{ $count: "total" }],
-          data: [
-            { $skip: skip },
-            { $limit: limit },
-            {
-              $project: {
-                _id: 1,
-                name: 1,
-                price: 1,
-                unit: 1,
-                description: 1,
-                user_id: 1,
-                createdAt: 1,
-                updatedAt: 1,
-                unique_id: 1,
-                category: "$category.name",
-                supplier: "$suppliers.name",
-              },
-            },
-          ],
-        },
-      },
-      {
-        $project: {
-          data: 1,
-          total: { $arrayElemAt: ["$metadata.total", 0] },
-          currentPage: { $literal: page },
-          totalPages: {
-            $ceil: {
-              $divide: [{ $arrayElemAt: ["$metadata.total", 0] }, pageSize],
-            },
-          },
-        },
-      },
-    ];
-
-    const Data = await Medicine.aggregate(aggregationPipeline);
-
-    if (
-      !Data ||
-      Data.length === 0 ||
-      !Data[0].data ||
-      Data[0].data.length === 0
-    ) {
-      return res.status(404).json({
-        success: false,
-        message: "No Medicine data found",
+    if (error.code === 11000 || error.name === "MongoError") {
+      return res.status(409).json({
+        code: 409,
+        status: "Conflict",
+        message: "Medicine already exists",
       });
     }
 
-    const responseData = Data[0];
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "Invalid ID format",
+      });
+    }
 
-    res.status(200).json({
-      success: true,
-      page: responseData.currentPage,
-      rows: responseData.total,
-      pages: responseData.totalPages,
-      pageSize: pageSize,
-      data: responseData.data,
-    });
-  } catch (error) {
     res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
     });
   }
 };
-export const getById = async (req, res) => {
+
+export const getAllMedicines = async (req, res) => {
   try {
-    const unique_id = req.params.unique_id;
-    const medicineExist = await Medicine.findOne({ unique_id }).populate(
-      "category_id",
-      "name"
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(process.env.ROWS_PER_PAGE) || 10;
+    const skip = (page - 1) * pageSize;
+
+    const [medicines, total] = await Promise.all([
+      Medicine.find({})
+        .populate("category_id", "name")
+        .populate("supplier_id", "name")
+        .skip(skip)
+        .limit(pageSize)
+        .select({
+          __v: 0,
+          createdAt: 0,
+          updatedAt: 0,
+        })
+        .lean(),
+      Medicine.countDocuments(),
+    ]);
+
+    if (!medicines || medicines.length === 0) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "No medicines found.",
+      });
+    }
+
+    const imgBaseUrl = process.env.IMAGE_URL || "/uploads/";
+    const medicinesWithImage = medicines.map((medicine) => ({
+      ...medicine,
+      image: medicine.image ? `${imgBaseUrl}${medicine.image}` : null,
+    }));
+
+    res.status(200).json({
+      code: 200,
+      status: "OK",
+      data: medicinesWithImage,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+};
+
+export const getMedicineById = async (req, res) => {
+  try {
+    const medicineId = req.params.id;
+    const medicine = await Medicine.findById(medicineId)
+      .populate("category_id", "name")
+      .populate("supplier_id", "name")
+      .select({
+        __v: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+
+    if (!medicine) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Medicine not found.",
+      });
+    }
+
+    const imgBaseUrl = process.env.IMAGE_URL || "/uploads/";
+    const medicineWithImage = {
+      ...medicine.toObject(),
+      image: medicine.image ? `${imgBaseUrl}${medicine.image}` : null,
+    };
+
+    res.status(200).json({
+      code: 200,
+      status: "OK",
+      data: medicineWithImage,
+    });
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "Invalid ID format",
+      });
+    }
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+};
+
+export const updateMedicine = async (req, res) => {
+  try {
+    const medicineId = req.params.id;
+    const payload = req.body;
+
+    const { error } = medicineSchema.validate(payload);
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: error.details[0].message,
+      });
+    }
+
+    if (req.file) {
+      payload.image = req.file.filename;
+      const oldMedicine = await Medicine.findById(medicineId);
+      if (oldMedicine && oldMedicine.image) {
+        const oldImagePath = path.join(
+          __dirname,
+          "../uploads",
+          oldMedicine.image
+        );
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+    }
+
+    const updatedMedicine = await Medicine.findByIdAndUpdate(
+      medicineId,
+      payload,
+      {
+        new: true,
+      }
     );
 
-    if (!medicineExist) {
+    if (!updatedMedicine) {
       return res.status(404).json({
-        success: false,
-        message: "Medicine not found.",
-      });
-    }
-    const Data = await Medicine.aggregate([
-      {
-        $sort: {
-          _id: -1,
-        },
-      },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category_id",
-          foreignField: "_id",
-          as: "category",
-        },
-      },
-      {
-        $unwind: "$category",
-      },
-      {
-        $lookup: {
-          from: "suppliers",
-          localField: "supplier_id",
-          foreignField: "_id",
-          as: "suppliers",
-        },
-      },
-      {
-        $unwind: "$suppliers",
-      },
-      {
-        $project: {
-          _id: 1,
-
-          name: 1,
-
-          price: 1,
-          unit: 1,
-          description: 1,
-          user_id: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          unique_id: 1,
-          category: "$category.name",
-          supplier: "$suppliers.name",
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          row: { $sum: 1 },
-          data: { $push: "$$ROOT" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          row: 1,
-          data: 1,
-        },
-      },
-    ]);
-    res.status(200).json({
-      success: true,
-      data: Data[0],
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const update = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const medicineExist = await Medicine.findById(id);
-
-    if (!medicineExist) {
-      return res.status(404).json({
-        success: false,
+        code: 404,
+        status: "Not Found",
         message: "Medicine not found.",
       });
     }
 
-    const updatedData = await Medicine.findByIdAndUpdate(id, req.body, {
-      new: true,
-    }).populate("category_id", "name");
-
     res.status(200).json({
-      success: true,
-      message: "Medicine updated successfully.",
-      data: updatedData,
+      code: 200,
+      status: "OK",
+      data: updatedMedicine,
     });
   } catch (error) {
     res.status(500).json({
-      success: false,
+      code: 500,
+      status: "Internal Server Error",
       message: error.message,
     });
   }
@@ -301,24 +270,40 @@ export const update = async (req, res) => {
 
 export const deleteMedicine = async (req, res) => {
   try {
-    const id = req.params.id;
-    const medicineExist = await Medicine.findById(id);
+    const medicineId = req.params.id;
+    const medicine = await Medicine.findByIdAndDelete(medicineId);
 
-    if (!medicineExist) {
+    if (!medicine) {
       return res.status(404).json({
-        success: false,
+        code: 404,
+        status: "Not Found",
         message: "Medicine not found.",
       });
     }
 
-    await Medicine.findByIdAndDelete(id);
+    if (medicine.image) {
+      const imagePath = path.join(__dirname, "../uploads", medicine.image);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
     res.status(200).json({
-      success: true,
-      message: "Medicine deleted successfully.",
+      code: 200,
+      status: "OK",
+      message: "Medicine deleted successfully",
     });
   } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "Invalid ID format",
+      });
+    }
     res.status(500).json({
-      success: false,
+      code: 500,
+      status: "Internal Server Error",
       message: error.message,
     });
   }

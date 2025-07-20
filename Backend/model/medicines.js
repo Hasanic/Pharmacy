@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongooseSequence from "mongoose-sequence";
+
 const AutoIncrement = mongooseSequence(mongoose);
 
 const medicineSchema = new mongoose.Schema(
@@ -10,12 +11,13 @@ const medicineSchema = new mongoose.Schema(
     },
     category_id: {
       type: mongoose.Schema.ObjectId,
-      // ref: "Category",
       required: true,
+      ref: "Category",
     },
     supplier_id: {
       type: mongoose.Schema.ObjectId,
       required: true,
+      ref: "Supplier",
     },
     price: {
       type: Number,
@@ -25,12 +27,28 @@ const medicineSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    stock_quantity: {
+      type: Number,
+      default: 0,
+    },
+    expiry_date: {
+      type: Date,
+    },
     description: {
       type: String,
     },
+    type: {
+      type: String,
+      enum: ["Tablet", "Capsule", "Syrup", "Injection", "Other"],
+      default: "Tablet",
+    },
+    image: {
+      type: String,
+      default: null,
+    },
     user_id: {
       type: mongoose.Schema.ObjectId,
-      default: null
+      default: null,
     },
     unique_id: Number,
   },
