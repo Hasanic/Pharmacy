@@ -92,7 +92,10 @@ const EcommerceShop = (): JSX.Element => {
 
                         return {
                             ...product,
-                            status: 'available',
+                            status:
+                                product.stock_quantity && product.stock_quantity > 0
+                                    ? 'available'
+                                    : 'not available',
                             priceSale: null,
                             category_id: category,
                             supplier_id: supplier
