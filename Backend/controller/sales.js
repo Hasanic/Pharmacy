@@ -721,7 +721,7 @@ export const register = async (req, res) => {
     if (quantity > medicine.stock_quantity) {
       return res.status(400).json({
         success: false,
-        message: `Quantity is more than stock.: ${medicine.stock_quantity}`,
+        message: `Quantity is more than stock ${medicine.stock_quantity}`,
       });
     }
     
