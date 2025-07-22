@@ -18,7 +18,7 @@ import * as Yup from 'yup';
 import API from '@/setting/endpoints';
 import { CreateProductPayload } from '@/setting/types/productTypes';
 import { AxiosError } from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const RootStyle = styled(Page)(({ theme }) => ({
     [theme.breakpoints.up('md')]: {
@@ -52,7 +52,6 @@ interface Supplier {
     name: string;
 }
 
-// type ProductType = 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
 type ProductType = 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Other';
 
 interface FormValues {
@@ -68,7 +67,35 @@ interface FormValues {
     image: string;
 }
 
+interface ProductCategory {
+    _id: string;
+    name: string;
+}
+
+interface ProductSupplier {
+    _id: string;
+    name: string;
+}
+
+interface ProductResponse {
+    _id: string;
+    name: string;
+    category_id: string | ProductCategory;
+    supplier_id: string | ProductSupplier;
+    price: number;
+    unit: string;
+    stock_quantity?: number;
+    expiry_date?: string | Date | null;
+    description?: string;
+    type?: string;
+    image?: string | null;
+    user_id?: string | null;
+    unique_id?: number;
+}
+
 const ProductForm = (): JSX.Element => {
+    const { id } = useParams();
+    const isEdit = Boolean(id);
     const { enqueueSnackbar } = useSnackbar();
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,14 +105,11 @@ const ProductForm = (): JSX.Element => {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [isLoading, setIsLoading] = useState({
         categories: true,
-        suppliers: true
+        suppliers: true,
+        product: isEdit
     });
 
     const productTypes: { value: ProductType; label: string }[] = [
-        // { value: 'Medicine', label: 'Medicine' },
-        // { value: 'Equipment', label: 'Equipment' },
-        // { value: 'Supplement', label: 'Supplement' },
-        // { value: 'Other', label: 'Other' }
         { value: 'Tablet', label: 'Tablet' },
         { value: 'Capsule', label: 'Capsule' },
         { value: 'Syrup', label: 'Syrup' },
@@ -93,44 +117,20 @@ const ProductForm = (): JSX.Element => {
         { value: 'Other', label: 'Other' }
     ];
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [categoriesResponse, suppliersResponse] = await Promise.all([
-                    API.categories.getAll(1),
-                    API.suppliers.getAll(1)
-                ]);
-
-                setCategories(categoriesResponse.data.data);
-                setSuppliers(suppliersResponse.data.data);
-                setIsLoading({ categories: false, suppliers: false });
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                enqueueSnackbar('Failed to load categories or suppliers', {
-                    variant: 'error',
-                    anchorOrigin: {
-                        vertical: 'top',
-                        horizontal: 'right'
-                    }
-                });
-                setIsLoading({ categories: false, suppliers: false });
-            }
-        };
-
-        fetchData();
-    }, []);
-
-    useEffect(() => {
-        if (!selectedFile) {
-            setPreview(null);
-            return;
+    const extractFilenameFromPath = (path: string): string | null => {
+        try {
+            return path.split(/[\\/]/).pop() || null;
+        } catch {
+            return null;
         }
+    };
 
-        const objectUrl = URL.createObjectURL(selectedFile);
-        setPreview(objectUrl);
-
-        return () => URL.revokeObjectURL(objectUrl);
-    }, [selectedFile]);
+    const buildProductImageUrl = (filename: string): string => {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        return `${baseUrl.replace(/\/api$/, '')}/api/medicines/image/${encodeURIComponent(
+            filename
+        )}`;
+    };
 
     const formik = useFormik<FormValues>({
         initialValues: {
@@ -142,114 +142,169 @@ const ProductForm = (): JSX.Element => {
             stock_quantity: 0,
             expiry_date: '',
             description: '',
-            // type: 'Medicine',
             type: 'Tablet',
             image: ''
         },
         validationSchema: Yup.object().shape({
             name: Yup.string().required('Product name is required'),
-            category_id: Yup.string()
-                .required('Category is required')
-                .matches(/^[0-9a-fA-F]{24}$/, 'Invalid category ID format'),
-            supplier_id: Yup.string()
-                .required('Supplier is required')
-                .matches(/^[0-9a-fA-F]{24}$/, 'Invalid supplier ID format'),
-            price: Yup.number().required('Price is required').min(0, 'Price must be positive'),
+            category_id: Yup.string().required('Category is required'),
+            supplier_id: Yup.string().required('Supplier is required'),
+            price: Yup.number().required('Price is required').min(0),
             unit: Yup.string().required('Unit is required'),
-            stock_quantity: Yup.number().min(0, 'Stock quantity cannot be negative'),
+            stock_quantity: Yup.number().min(0),
             expiry_date: Yup.date().nullable(),
             description: Yup.string().nullable(),
             type: Yup.mixed<ProductType>()
                 .oneOf(['Tablet', 'Capsule', 'Syrup', 'Injection', 'Other'])
-                // .oneOf(['Medicine', 'Equipment', 'Supplement', 'Other'])
                 .required('Type is required'),
             image: Yup.string().nullable()
         }),
-        onSubmit: async (values, { setSubmitting, resetForm }) => {
+        onSubmit: async (values) => {
             setIsSubmitting(true);
             try {
                 const formData = new FormData();
-
-                formData.append('name', values.name);
-                formData.append('category_id', values.category_id);
-                formData.append('supplier_id', values.supplier_id);
-                formData.append('price', values.price.toString());
-                formData.append('unit', values.unit);
-                formData.append('stock_quantity', values.stock_quantity.toString());
-                formData.append('type', values.type);
-
-                if (values.expiry_date) {
-                    formData.append('expiry_date', values.expiry_date);
-                }
-                if (values.description) {
-                    formData.append('description', values.description);
-                }
-                if (selectedFile) {
-                    formData.append('image', selectedFile);
-                }
-
-                await API.products.create(formData as unknown as CreateProductPayload);
-
-                enqueueSnackbar('Product created successfully!', {
-                    variant: 'success',
-                    anchorOrigin: {
-                        vertical: 'top',
-                        horizontal: 'right'
-                    },
-                    autoHideDuration: 3000
+                Object.entries(values).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined) {
+                        formData.append(key, value.toString());
+                    }
                 });
 
-                resetForm();
-                setSelectedFile(null);
-                setPreview(null);
+                if (selectedFile) {
+                    formData.append('imageFile', selectedFile);
+                }
+
+                if (isEdit && id) {
+                    await API.products.update(id, formData as unknown as CreateProductPayload);
+                    enqueueSnackbar('Product updated!', { variant: 'success' });
+                } else {
+                    await API.products.create(formData as unknown as CreateProductPayload);
+                    enqueueSnackbar('Product created!', { variant: 'success' });
+                }
                 navigate('/dashboard/products');
             } catch (error) {
-                console.error('Error creating product:', error);
-                let errorMessage = 'Failed to create product. Please try again.';
-
-                if (error instanceof AxiosError) {
-                    errorMessage = error.response?.data?.message || errorMessage;
-                } else if (error instanceof Error) {
-                    errorMessage = error.message;
-                }
-
-                enqueueSnackbar(errorMessage, {
-                    variant: 'error',
-                    anchorOrigin: {
-                        vertical: 'top',
-                        horizontal: 'right'
-                    },
-                    autoHideDuration: 5000
-                });
+                console.error('Error:', error);
+                enqueueSnackbar('Operation failed!', { variant: 'error' });
             } finally {
-                setSubmitting(false);
                 setIsSubmitting(false);
             }
         }
     });
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
-            const file = event.target.files[0];
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                const [categoriesRes, suppliersRes] = await Promise.all([
+                    API.categories.getAll(1),
+                    API.suppliers.getAll(1)
+                ]);
+
+                setCategories(categoriesRes.data.data);
+                setSuppliers(suppliersRes.data.data);
+                setIsLoading((prev) => ({ ...prev, categories: false, suppliers: false }));
+
+                if (isEdit && id) {
+                    try {
+                        const productRes = await API.products.getById(id);
+                        const product = productRes.data as ProductResponse;
+
+                        // Type-safe extraction of category ID
+                        const categoryId =
+                            typeof product.category_id === 'object'
+                                ? (product.category_id as ProductCategory)._id
+                                : product.category_id || '';
+
+                        // Type-safe extraction of supplier ID
+                        const supplierId =
+                            typeof product.supplier_id === 'object'
+                                ? (product.supplier_id as ProductSupplier)._id
+                                : product.supplier_id || '';
+
+                        // Ensure product type is valid
+                        const productType = productTypes.some((pt) => pt.value === product.type)
+                            ? (product.type as ProductType)
+                            : 'Tablet';
+
+                        const initialValues: FormValues = {
+                            name: product.name || '',
+                            category_id: categoryId,
+                            supplier_id: supplierId,
+                            price: product.price || 0,
+                            unit: product.unit || '',
+                            stock_quantity: product.stock_quantity || 0,
+                            expiry_date: product.expiry_date
+                                ? new Date(product.expiry_date).toISOString().split('T')[0]
+                                : '',
+                            description: product.description || '',
+                            type: productType,
+                            image: product.image || ''
+                        };
+
+                        formik.setValues(initialValues);
+
+                        if (product.image) {
+                            const filename = extractFilenameFromPath(product.image);
+                            if (filename) {
+                                setPreview(buildProductImageUrl(filename));
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching product:', error);
+                        enqueueSnackbar('Failed to load product', { variant: 'error' });
+                    } finally {
+                        setIsLoading((prev) => ({ ...prev, product: false }));
+                    }
+                }
+            } catch (error) {
+                console.error('Initial data fetch error:', error);
+                enqueueSnackbar('Failed to load required data', { variant: 'error' });
+                setIsLoading({
+                    categories: false,
+                    suppliers: false,
+                    product: false
+                });
+            }
+        };
+
+        fetchInitialData();
+    }, [id, isEdit]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            const file = e.target.files[0];
             setSelectedFile(file);
             formik.setFieldValue('image', file.name);
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                setPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
+    if (isLoading.product) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh'
+                }}
+            >
+                <CircularProgress />
+                <Typography sx={{ ml: 2 }}>Loading product data...</Typography>
+            </Box>
+        );
+    }
+
     return (
-        <RootStyle title="Add Product">
+        <RootStyle title={isEdit ? 'Edit Product' : 'Create Product'}>
             <Container>
                 <ContentStyle>
-                    <Stack sx={{ mb: 5 }}>
-                        <Typography
-                            variant="h4"
-                            gutterBottom
-                            align="center"
-                            sx={{ fontWeight: 'bold' }}
-                        >
-                            Create Product
-                        </Typography>
-                    </Stack>
+                    <Typography variant="h4" gutterBottom sx={{ mb: 5, textAlign: 'center' }}>
+                        {isEdit ? 'Edit Product' : 'Create New Product'}
+                    </Typography>
 
                     <FormStyle onSubmit={formik.handleSubmit}>
                         <TextField
@@ -263,8 +318,8 @@ const ProductForm = (): JSX.Element => {
                         />
 
                         <TextField
-                            fullWidth
                             select
+                            fullWidth
                             label="Product Type"
                             name="type"
                             value={formik.values.type}
@@ -280,22 +335,17 @@ const ProductForm = (): JSX.Element => {
                         </TextField>
 
                         <TextField
-                            fullWidth
                             select
+                            fullWidth
                             label="Category"
                             name="category_id"
-                            value={formik.values.category_id}
+                            value={formik.values.category_id || ''}
                             onChange={formik.handleChange}
+                            disabled={isLoading.categories}
                             error={formik.touched.category_id && Boolean(formik.errors.category_id)}
                             helperText={formik.touched.category_id && formik.errors.category_id}
-                            disabled={isLoading.categories}
-                            InputProps={{
-                                endAdornment: isLoading.categories ? (
-                                    <CircularProgress size={20} />
-                                ) : null
-                            }}
                         >
-                            <MenuItem value="">Select a category</MenuItem>
+                            <MenuItem value="">Select Category</MenuItem>
                             {categories.map((category) => (
                                 <MenuItem key={category._id} value={category._id}>
                                     {category.name}
@@ -304,22 +354,17 @@ const ProductForm = (): JSX.Element => {
                         </TextField>
 
                         <TextField
-                            fullWidth
                             select
+                            fullWidth
                             label="Supplier"
                             name="supplier_id"
-                            value={formik.values.supplier_id}
+                            value={formik.values.supplier_id || ''}
                             onChange={formik.handleChange}
+                            disabled={isLoading.suppliers}
                             error={formik.touched.supplier_id && Boolean(formik.errors.supplier_id)}
                             helperText={formik.touched.supplier_id && formik.errors.supplier_id}
-                            disabled={isLoading.suppliers}
-                            InputProps={{
-                                endAdornment: isLoading.suppliers ? (
-                                    <CircularProgress size={20} />
-                                ) : null
-                            }}
                         >
-                            <MenuItem value="">Select a supplier</MenuItem>
+                            <MenuItem value="">Select Supplier</MenuItem>
                             {suppliers.map((supplier) => (
                                 <MenuItem key={supplier._id} value={supplier._id}>
                                     {supplier.name}
@@ -329,16 +374,14 @@ const ProductForm = (): JSX.Element => {
 
                         <TextField
                             fullWidth
+                            type="number"
                             label="Price"
                             name="price"
-                            type="number"
                             value={formik.values.price}
                             onChange={formik.handleChange}
+                            InputProps={{ inputProps: { min: 0 } }}
                             error={formik.touched.price && Boolean(formik.errors.price)}
                             helperText={formik.touched.price && formik.errors.price}
-                            InputProps={{
-                                inputProps: { min: 0 }
-                            }}
                         />
 
                         <TextField
@@ -353,11 +396,12 @@ const ProductForm = (): JSX.Element => {
 
                         <TextField
                             fullWidth
+                            type="number"
                             label="Stock Quantity"
                             name="stock_quantity"
-                            type="number"
                             value={formik.values.stock_quantity}
                             onChange={formik.handleChange}
+                            InputProps={{ inputProps: { min: 0 } }}
                             error={
                                 formik.touched.stock_quantity &&
                                 Boolean(formik.errors.stock_quantity)
@@ -365,29 +409,26 @@ const ProductForm = (): JSX.Element => {
                             helperText={
                                 formik.touched.stock_quantity && formik.errors.stock_quantity
                             }
-                            InputProps={{
-                                inputProps: { min: 0 }
-                            }}
                         />
 
                         <TextField
                             fullWidth
+                            type="date"
                             label="Expiry Date"
                             name="expiry_date"
-                            type="date"
-                            InputLabelProps={{ shrink: true }}
                             value={formik.values.expiry_date}
                             onChange={formik.handleChange}
+                            InputLabelProps={{ shrink: true }}
                             error={formik.touched.expiry_date && Boolean(formik.errors.expiry_date)}
                             helperText={formik.touched.expiry_date && formik.errors.expiry_date}
                         />
 
                         <TextField
                             fullWidth
-                            label="Description"
-                            name="description"
                             multiline
                             rows={3}
+                            label="Description"
+                            name="description"
                             value={formik.values.description}
                             onChange={formik.handleChange}
                             error={formik.touched.description && Boolean(formik.errors.description)}
@@ -402,37 +443,29 @@ const ProductForm = (): JSX.Element => {
                                 type="file"
                                 accept="image/*"
                                 onChange={handleFileChange}
-                                style={{ display: 'block' }}
+                                style={{ display: 'block', marginBottom: 16 }}
                             />
-                            {selectedFile && (
-                                <Box sx={{ mt: 2 }}>
-                                    <Avatar
-                                        src={preview || undefined}
-                                        alt="Product preview"
-                                        sx={{
-                                            width: 150,
-                                            height: 150,
-                                            borderRadius: 1,
-                                            border: '1px solid #ddd'
-                                        }}
-                                        variant="square"
-                                    />
-                                </Box>
+                            {preview && (
+                                <Avatar
+                                    src={preview}
+                                    alt="Preview"
+                                    sx={{ width: 150, height: 150 }}
+                                    variant="rounded"
+                                />
                             )}
                         </Box>
 
                         <Button
-                            size="large"
                             type="submit"
                             variant="contained"
+                            size="large"
                             disabled={isSubmitting}
                             sx={{ mt: 3 }}
                         >
                             {isSubmitting ? (
-                                <>
-                                    <CircularProgress size={24} sx={{ mr: 1 }} />
-                                    Creating...
-                                </>
+                                <CircularProgress size={24} />
+                            ) : isEdit ? (
+                                'Update Product'
                             ) : (
                                 'Create Product'
                             )}

@@ -1,7 +1,7 @@
 import { useFormik } from 'formik';
 import React, { useState, useEffect } from 'react';
 import { Container, Stack, Typography, Button } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import Page from '@/components/Page';
 import { ProductList, ProductFilterSidebar } from '@/components/_dashboard/products';
 import API from '@/setting/endpoints';
@@ -56,6 +56,7 @@ const EcommerceShop = (): JSX.Element => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [maxPrice, setMaxPrice] = useState(1000);
+    const navigate = useNavigate();
 
     const formik = useFormik<FilterValues>({
         initialValues: {
@@ -185,6 +186,20 @@ const EcommerceShop = (): JSX.Element => {
         setProducts(allProducts);
     };
 
+    const handleEditProduct = (product: IProduct) => {
+        navigate(`/dashboard/products/edit/${product._id}`);
+    };
+
+    const handleDeleteProduct = async (productId: string) => {
+        try {
+            await API.products.delete(productId);
+            setProducts(products.filter((product) => product._id !== productId));
+            setAllProducts(allProducts.filter((product) => product._id !== productId));
+        } catch (error) {
+            console.error('Error deleting product:', error);
+        }
+    };
+
     return (
         <Page title="Dashboard: Products | Minimal-UI">
             <Container>
@@ -235,7 +250,11 @@ const EcommerceShop = (): JSX.Element => {
                 ) : loading ? (
                     <Typography>Loading products...</Typography>
                 ) : (
-                    <ProductList products={products} />
+                    <ProductList
+                        products={products}
+                        onDeleteProduct={handleDeleteProduct}
+                        onEditProduct={handleEditProduct}
+                    />
                 )}
             </Container>
         </Page>

@@ -19,6 +19,7 @@ export const Router = (): ReactElement => {
                 <Route path="user" element={<User />} />
                 <Route path="products" element={<Products />} />
                 <Route path="products/create" element={<ProductForm />} />
+                <Route path="products/edit/:id" element={<ProductForm />} />
             </Route>
 
             <Route path="/" element={<LogoOnlyLayout />}>
