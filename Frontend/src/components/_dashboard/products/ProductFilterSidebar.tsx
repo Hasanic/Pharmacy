@@ -14,26 +14,40 @@ import {
     Checkbox,
     FormGroup,
     IconButton,
+    TextField,
     Typography,
     RadioGroup,
-    FormControlLabel
+    FormControlLabel,
+    Slider
 } from '@mui/material';
 import Scrollbar from '../../Scrollbar';
 
-export const FILTER_GENDER_OPTIONS = ['daawo', 'malaay'];
-export const FILTER_CATEGORY_OPTIONS = ['madax xanuun', 'omaar'];
+export const FILTER_CATEGORY_OPTIONS = ['Medicine', 'Equipment', 'Supplement', 'Other'];
 
 interface Props {
     isOpenFilter: boolean;
     onResetFilter: () => void;
     onOpenFilter: () => void;
     onCloseFilter: () => void;
-    formik;
+    formik: any;
 }
 
 const ProductFilterSidebar = (props: Props): JSX.Element => {
-    const { onResetFilter } = props;
-    const { values, getFieldProps } = props.formik;
+    const { onResetFilter, onCloseFilter } = props;
+    const { values, getFieldProps, setFieldValue, resetForm } = props.formik;
+
+    const handlePriceChange = (event: Event, newValue: number | number[]) => {
+        setFieldValue('priceRange', newValue as number[]);
+    };
+
+    const handleApplyFilters = () => {
+        props.formik.submitForm();
+        onCloseFilter();
+        setTimeout(() => {
+            resetForm();
+            setFieldValue('priceRange', [0, values.maxPrice]);
+        }, 300);
+    };
 
     return (
         <>
@@ -51,7 +65,7 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                     <Drawer
                         anchor="right"
                         open={props.isOpenFilter}
-                        onClose={props.onCloseFilter}
+                        onClose={onCloseFilter}
                         PaperProps={{
                             sx: { width: 280, border: 'none', overflow: 'hidden' }
                         }}
@@ -65,7 +79,7 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                             <Typography variant="subtitle1" sx={{ ml: 1 }}>
                                 Filters
                             </Typography>
-                            <IconButton onClick={props.onCloseFilter}>
+                            <IconButton onClick={onCloseFilter}>
                                 <Icon icon={closeFill} width={20} height={20} />
                             </IconButton>
                         </Stack>
@@ -76,23 +90,51 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                             <Stack spacing={3} sx={{ p: 3 }}>
                                 <div>
                                     <Typography variant="subtitle1" gutterBottom>
-                                        Gender
+                                        Search by Name
                                     </Typography>
-                                    <FormGroup>
-                                        {FILTER_GENDER_OPTIONS.map((item) => (
-                                            <FormControlLabel
-                                                key={item}
-                                                control={
-                                                    <Checkbox
-                                                        {...getFieldProps('gender')}
-                                                        value={item}
-                                                        checked={values.gender.includes(item)}
-                                                    />
-                                                }
-                                                label={item}
-                                            />
-                                        ))}
-                                    </FormGroup>
+                                    <TextField
+                                        fullWidth
+                                        {...getFieldProps('name')}
+                                        placeholder="Product name..."
+                                    />
+                                </div>
+
+                                <div>
+                                    <Typography variant="subtitle1" gutterBottom>
+                                        Price Range
+                                    </Typography>
+                                    <Slider
+                                        value={values.priceRange}
+                                        onChange={handlePriceChange}
+                                        valueLabelDisplay="auto"
+                                        min={0}
+                                        max={values.maxPrice || 1000}
+                                        step={10}
+                                    />
+                                    <Stack direction="row" spacing={2}>
+                                        <TextField
+                                            label="Min"
+                                            type="number"
+                                            value={values.priceRange[0]}
+                                            onChange={(e) =>
+                                                setFieldValue('priceRange', [
+                                                    Number(e.target.value),
+                                                    values.priceRange[1]
+                                                ])
+                                            }
+                                        />
+                                        <TextField
+                                            label="Max"
+                                            type="number"
+                                            value={values.priceRange[1]}
+                                            onChange={(e) =>
+                                                setFieldValue('priceRange', [
+                                                    values.priceRange[0],
+                                                    Number(e.target.value)
+                                                ])
+                                            }
+                                        />
+                                    </Stack>
                                 </div>
 
                                 <div>
@@ -110,6 +152,27 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                                         ))}
                                     </RadioGroup>
                                 </div>
+
+                                <div>
+                                    <Typography variant="subtitle1" gutterBottom>
+                                        Product Type
+                                    </Typography>
+                                    <FormGroup>
+                                        {FILTER_CATEGORY_OPTIONS.map((item) => (
+                                            <FormControlLabel
+                                                key={item}
+                                                control={
+                                                    <Checkbox
+                                                        {...getFieldProps('type')}
+                                                        value={item}
+                                                        checked={values.type.includes(item)}
+                                                    />
+                                                }
+                                                label={item}
+                                            />
+                                        ))}
+                                    </FormGroup>
+                                </div>
                             </Stack>
                         </Scrollbar>
 
@@ -117,7 +180,18 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                             <Button
                                 fullWidth
                                 size="large"
-                                type="submit"
+                                type="button"
+                                color="inherit"
+                                variant="outlined"
+                                onClick={handleApplyFilters}
+                                sx={{ mb: 1 }}
+                            >
+                                Apply Filters
+                            </Button>
+                            <Button
+                                fullWidth
+                                size="large"
+                                type="button"
                                 color="inherit"
                                 variant="outlined"
                                 onClick={onResetFilter}

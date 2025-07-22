@@ -7,6 +7,16 @@ import { ProductList, ProductFilterSidebar } from '@/components/_dashboard/produ
 import API from '@/setting/endpoints';
 import { IProduct } from '@/models';
 
+type ProductType = 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
+
+interface FilterValues {
+    name: string;
+    type: ProductType[];
+    category: string;
+    priceRange: [number, number];
+    maxPrice: number;
+}
+
 interface APIProduct {
     _id: string;
     name: string;
@@ -17,7 +27,7 @@ interface APIProduct {
     stock_quantity?: number;
     expiry_date?: Date | null;
     description?: string;
-    type?: 'Medicine' | 'Equipment' | 'Supplement' | 'Other';
+    type?: ProductType;
     image?: string | null;
     user_id?: string | null;
     unique_id?: number;
@@ -42,23 +52,52 @@ interface APIResponse {
 const EcommerceShop = (): JSX.Element => {
     const [openFilter, setOpenFilter] = useState(false);
     const [products, setProducts] = useState<IProduct[]>([]);
+    const [allProducts, setAllProducts] = useState<IProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [maxPrice, setMaxPrice] = useState(1000);
 
-    const formik = useFormik({
+    const formik = useFormik<FilterValues>({
         initialValues: {
-            gender: '',
+            name: '',
+            type: [],
             category: '',
-            colors: '',
-            priceRange: '',
-            rating: ''
+            priceRange: [0, 1000],
+            maxPrice: 1000
         },
-        onSubmit: () => {
-            setOpenFilter(false);
+        onSubmit: (values) => {
+            const filtered = allProducts.filter((product) => {
+                if (
+                    values.name &&
+                    !product.name.toLowerCase().includes(values.name.toLowerCase())
+                ) {
+                    return false;
+                }
+
+                if (product.price < values.priceRange[0] || product.price > values.priceRange[1]) {
+                    return false;
+                }
+
+                if (values.type.length > 0 && product.type && !values.type.includes(product.type)) {
+                    return false;
+                }
+
+                if (
+                    values.category &&
+                    typeof product.category_id !== 'string' &&
+                    product.category_id.name !== values.category
+                ) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            setProducts(filtered);
         }
     });
 
-    const { resetForm, handleSubmit } = formik;
+    const { resetForm, handleSubmit, setFieldValue } = formik;
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -99,8 +138,17 @@ const EcommerceShop = (): JSX.Element => {
                     }
                 );
 
+                setAllProducts(formattedProducts);
                 setProducts(formattedProducts);
                 setError(null);
+
+                if (formattedProducts.length > 0) {
+                    const calculatedMaxPrice = Math.max(...formattedProducts.map((p) => p.price));
+                    const roundedMaxPrice = Math.ceil(calculatedMaxPrice / 100) * 100;
+                    setMaxPrice(roundedMaxPrice);
+                    setFieldValue('priceRange', [0, roundedMaxPrice]);
+                    setFieldValue('maxPrice', roundedMaxPrice);
+                }
             } catch (error: unknown) {
                 let errorMessage = 'Failed to load products';
 
@@ -113,6 +161,7 @@ const EcommerceShop = (): JSX.Element => {
 
                 setError(errorMessage);
                 setProducts([]);
+                setAllProducts([]);
             } finally {
                 setLoading(false);
             }
@@ -127,11 +176,13 @@ const EcommerceShop = (): JSX.Element => {
 
     const handleCloseFilter = () => {
         setOpenFilter(false);
+        handleSubmit();
     };
 
     const handleResetFilter = () => {
-        handleSubmit();
         resetForm();
+        setFieldValue('priceRange', [0, maxPrice]);
+        setProducts(allProducts);
     };
 
     return (
