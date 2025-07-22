@@ -3,11 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Stack, Typography, Button } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import Page from '@/components/Page';
-import {
-    ProductList,
-    ProductCartWidget,
-    ProductFilterSidebar
-} from '@/components/_dashboard/products';
+import { ProductList, ProductFilterSidebar } from '@/components/_dashboard/products';
 import API from '@/setting/endpoints';
 import { IProduct } from '@/models';
 
@@ -190,7 +186,6 @@ const EcommerceShop = (): JSX.Element => {
                 ) : (
                     <ProductList products={products} />
                 )}
-                <ProductCartWidget />
             </Container>
         </Page>
     );
