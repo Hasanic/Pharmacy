@@ -17,9 +17,9 @@ export const Router = (): ReactElement => {
                 <Route path="" element={<Navigate to="/dashboard/app" replace />} />
                 <Route path="app" element={<DashboardApp />} />
                 <Route path="user" element={<User />} />
-                <Route path="products" element={<Products />} />
-                <Route path="products/create" element={<ProductForm />} />
-                <Route path="products/edit/:id" element={<ProductForm />} />
+                <Route path="Medicine" element={<Products />} />
+                <Route path="Medicine/create" element={<ProductForm />} />
+                <Route path="Medicine/edit/:id" element={<ProductForm />} />
             </Route>
 
             <Route path="/" element={<LogoOnlyLayout />}>

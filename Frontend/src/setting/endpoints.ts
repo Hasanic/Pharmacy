@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 import { Role } from './types/roleTypes';
 import { RegisterUser } from './types/UserTypes';
-import { Product, CreateProductPayload } from './types/productTypes';
+import { Product } from './types/productTypes';
 
 interface LoginPayload {
     username: string;
@@ -33,18 +33,14 @@ const API = {
     users: {
         create: (data: RegisterUser): Promise<ApiResponse<RegisterUser>> =>
             apiClient.post('/user', data),
-
         getAll: (page?: number): Promise<ApiResponse<PaginatedResponse<RegisterUser>>> =>
             apiClient.get('/user/getAllUsers', { params: { page } }),
-
         getById: (userId: string): Promise<ApiResponse<RegisterUser>> =>
             apiClient.get(`/users/${userId}`),
-
         updateUser: (
             userId: string,
             data: Partial<RegisterUser>
         ): Promise<ApiResponse<RegisterUser>> => apiClient.put(`/users/${userId}`, data),
-
         delete: (userId: string): Promise<ApiResponse<void>> => apiClient.delete(`/users/${userId}`)
     },
     roles: {
@@ -56,25 +52,16 @@ const API = {
             })
     },
     products: {
-        create: (data: FormData | CreateProductPayload): Promise<ApiResponse<Product>> =>
-            apiClient.post('/medicines', data, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            }),
+        create: (data: FormData, config?: any): Promise<ApiResponse<Product>> =>
+            apiClient.post('/medicines', data, config),
         getAll: (
             page = 1
         ): Promise<ApiResponse<PaginatedResponse<{ _id: string; name: string }>>> =>
             apiClient.get('/medicines', { params: { page } }),
-
         getById: (productId: string): Promise<ApiResponse<Product>> =>
             apiClient.get(`/medicines/${productId}`),
-
-        update: (
-            productId: string,
-            data: Partial<CreateProductPayload>
-        ): Promise<ApiResponse<Product>> => apiClient.put(`/medicines/${productId}`, data),
-
+        update: (productId: string, data: FormData, config?: any): Promise<ApiResponse<Product>> =>
+            apiClient.put(`/medicines/${productId}`, data, config),
         delete: (productId: string): Promise<ApiResponse<void>> =>
             apiClient.delete(`/medicines/${productId}`)
     },
@@ -89,7 +76,11 @@ const API = {
             page = 1
         ): Promise<ApiResponse<PaginatedResponse<{ _id: string; name: string }>>> =>
             apiClient.get('/supplier/getAllSuppliers', { params: { page } })
-    }
+    },
+    get: (url: string, config?: any) => apiClient.get(url, config),
+    post: (url: string, data?: any, config?: any) => apiClient.post(url, data, config),
+    put: (url: string, data?: any, config?: any) => apiClient.put(url, data, config),
+    delete: (url: string, config?: any) => apiClient.delete(url, config)
 };
 
 export default API;

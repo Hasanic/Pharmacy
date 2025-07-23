@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import { Form, FormikProvider } from 'formik';
 import closeFill from '@iconify/icons-eva/close-fill';
@@ -17,8 +17,7 @@ import {
     TextField,
     Typography,
     RadioGroup,
-    FormControlLabel,
-    Slider
+    FormControlLabel
 } from '@mui/material';
 import Scrollbar from '../../Scrollbar';
 
@@ -33,21 +32,28 @@ interface Props {
 }
 
 const ProductFilterSidebar = (props: Props): JSX.Element => {
-    const { onResetFilter, onCloseFilter } = props;
-    const { values, getFieldProps, setFieldValue, resetForm } = props.formik;
+    const { onResetFilter, onCloseFilter, isOpenFilter } = props;
+    const { values, getFieldProps, setFieldValue, resetForm, initialValues } = props.formik;
 
-    const handlePriceChange = (event: Event, newValue: number | number[]) => {
-        setFieldValue('priceRange', newValue as number[]);
-    };
+    const typeValues = values.type || [];
 
     const handleApplyFilters = () => {
         props.formik.submitForm();
         onCloseFilter();
         setTimeout(() => {
             resetForm();
-            setFieldValue('priceRange', [0, values.maxPrice]);
+            setFieldValue('priceRange', [0, 1000]);
         }, 300);
     };
+
+    useEffect(() => {
+        if (isOpenFilter) {
+            setFieldValue('priceRange', [0, 1000]);
+            if (!values.type) {
+                setFieldValue('type', []);
+            }
+        }
+    }, [isOpenFilter, setFieldValue, values.type]);
 
     return (
         <>
@@ -64,7 +70,7 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                 <Form autoComplete="off" noValidate>
                     <Drawer
                         anchor="right"
-                        open={props.isOpenFilter}
+                        open={isOpenFilter}
                         onClose={onCloseFilter}
                         PaperProps={{
                             sx: { width: 280, border: 'none', overflow: 'hidden' }
@@ -90,49 +96,42 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                             <Stack spacing={3} sx={{ p: 3 }}>
                                 <div>
                                     <Typography variant="subtitle1" gutterBottom>
-                                        Search by Name
+                                        Medicine Name
                                     </Typography>
                                     <TextField
                                         fullWidth
                                         {...getFieldProps('name')}
-                                        placeholder="Product name..."
+                                        placeholder="Search by Medicine Name"
                                     />
                                 </div>
 
                                 <div>
                                     <Typography variant="subtitle1" gutterBottom>
-                                        Price Range
+                                        Price
                                     </Typography>
-                                    <Slider
-                                        value={values.priceRange}
-                                        onChange={handlePriceChange}
-                                        valueLabelDisplay="auto"
-                                        min={0}
-                                        max={values.maxPrice || 1000}
-                                        step={10}
-                                    />
+
                                     <Stack direction="row" spacing={2}>
                                         <TextField
                                             label="Min"
                                             type="number"
-                                            value={values.priceRange[0]}
                                             onChange={(e) =>
                                                 setFieldValue('priceRange', [
-                                                    Number(e.target.value),
-                                                    values.priceRange[1]
+                                                    Math.max(0, Number(e.target.value)),
+                                                    values.priceRange?.[1] || 1000
                                                 ])
                                             }
+                                            inputProps={{ min: 0, max: 1000 }}
                                         />
                                         <TextField
                                             label="Max"
                                             type="number"
-                                            value={values.priceRange[1]}
                                             onChange={(e) =>
                                                 setFieldValue('priceRange', [
-                                                    values.priceRange[0],
-                                                    Number(e.target.value)
+                                                    values.priceRange?.[0] || 0,
+                                                    Math.min(1000, Number(e.target.value))
                                                 ])
                                             }
+                                            inputProps={{ min: 0, max: 1000 }}
                                         />
                                     </Stack>
                                 </div>
@@ -165,7 +164,7 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                                                     <Checkbox
                                                         {...getFieldProps('type')}
                                                         value={item}
-                                                        checked={values.type.includes(item)}
+                                                        checked={typeValues.includes(item)}
                                                     />
                                                 }
                                                 label={item}
@@ -175,29 +174,27 @@ const ProductFilterSidebar = (props: Props): JSX.Element => {
                                 </div>
                             </Stack>
                         </Scrollbar>
-
-                        <Box sx={{ p: 3 }}>
+                        <Box sx={{ p: 3, display: 'flex', gap: 2 }}>
                             <Button
-                                fullWidth
                                 size="large"
                                 type="button"
                                 color="inherit"
                                 variant="outlined"
                                 onClick={handleApplyFilters}
-                                sx={{ mb: 1 }}
+                                sx={{ flex: 1 }}
                             >
-                                Apply Filters
+                                Apply
                             </Button>
                             <Button
-                                fullWidth
                                 size="large"
                                 type="button"
                                 color="inherit"
                                 variant="outlined"
                                 onClick={onResetFilter}
                                 startIcon={<Icon icon={roundClearAll} />}
+                                sx={{ flex: 1 }}
                             >
-                                Clear All
+                                Clear
                             </Button>
                         </Box>
                     </Drawer>

@@ -42,9 +42,7 @@ export const createMedicine = async (req, res) => {
 
     const { error } = medicineSchema.validate(payload);
     if (error) {
-      if (uploadedFilePath) {
-        fs.unlinkSync(uploadedFilePath);
-      }
+      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(400).json({
         code: 400,
         status: "Bad Request",
@@ -58,9 +56,7 @@ export const createMedicine = async (req, res) => {
     });
 
     if (existingMedicine) {
-      if (uploadedFilePath) {
-        fs.unlinkSync(uploadedFilePath);
-      }
+      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(409).json({
         code: 409,
         status: "Conflict",
@@ -117,11 +113,7 @@ export const getAllMedicines = async (req, res) => {
         .populate("supplier_id", "name")
         .skip(skip)
         .limit(pageSize)
-        .select({
-          __v: 0,
-          createdAt: 0,
-          updatedAt: 0,
-        })
+        .select({ __v: 0, createdAt: 0, updatedAt: 0 })
         .lean(),
       Medicine.countDocuments(),
     ]);
@@ -166,11 +158,7 @@ export const getMedicineById = async (req, res) => {
     const medicine = await Medicine.findById(medicineId)
       .populate("category_id", "name")
       .populate("supplier_id", "name")
-      .select({
-        __v: 0,
-        createdAt: 0,
-        updatedAt: 0,
-      });
+      .select({ __v: 0, createdAt: 0, updatedAt: 0 });
 
     if (!medicine) {
       return res.status(404).json({
@@ -208,21 +196,21 @@ export const getMedicineById = async (req, res) => {
 };
 
 export const updateMedicine = async (req, res) => {
+  let uploadedFilePath = null;
+
   try {
     const medicineId = req.params.id;
-    const payload = req.body;
-
-    const { error } = medicineSchema.validate(payload);
-    if (error) {
-      return res.status(400).json({
-        code: 400,
-        status: "Bad Request",
-        message: error.details[0].message,
-      });
-    }
+    const payload = {
+      ...req.body,
+      price: parseFloat(req.body.price),
+      stock_quantity: parseInt(req.body.stock_quantity) || 0,
+      expiry_date: req.body.expiry_date ? new Date(req.body.expiry_date) : null,
+    };
 
     if (req.file) {
       payload.image = req.file.filename;
+      uploadedFilePath = path.join(req.file.destination, req.file.filename);
+
       const oldMedicine = await Medicine.findById(medicineId);
       if (oldMedicine && oldMedicine.image) {
         const oldImagePath = path.join(__dirname, "../uploads", oldMedicine.image);
@@ -232,11 +220,26 @@ export const updateMedicine = async (req, res) => {
       }
     }
 
+    const { error } = medicineSchema.validate(payload);
+    if (error) {
+      if (uploadedFilePath) {
+        fs.unlinkSync(uploadedFilePath);
+      }
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: error.details[0].message,
+      });
+    }
+
     const updatedMedicine = await Medicine.findByIdAndUpdate(medicineId, payload, {
       new: true,
     });
 
     if (!updatedMedicine) {
+      if (uploadedFilePath) {
+        fs.unlinkSync(uploadedFilePath);
+      }
       return res.status(404).json({
         code: 404,
         status: "Not Found",
@@ -250,6 +253,10 @@ export const updateMedicine = async (req, res) => {
       data: updatedMedicine,
     });
   } catch (error) {
+    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+      fs.unlinkSync(uploadedFilePath);
+    }
+
     res.status(500).json({
       code: 500,
       status: "Internal Server Error",

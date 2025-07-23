@@ -16,7 +16,6 @@ import Page from '@/components/Page';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import API from '@/setting/endpoints';
-import { CreateProductPayload } from '@/setting/types/productTypes';
 import { AxiosError } from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -54,6 +53,21 @@ interface Supplier {
 
 type ProductType = 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Other';
 
+interface Product {
+    _id: string;
+    name: string;
+    category_id: string | { _id: string; name: string };
+    supplier_id: string | { _id: string; name: string };
+    price: number;
+    unit: string;
+    stock_quantity?: number;
+    expiry_date?: string | Date | null;
+    description?: string;
+    type?: string;
+    image?: string | null;
+    user_id?: string | null;
+}
+
 interface FormValues {
     name: string;
     category_id: string;
@@ -64,33 +78,7 @@ interface FormValues {
     expiry_date: string;
     description: string;
     type: ProductType;
-    image: string;
-}
-
-interface ProductCategory {
-    _id: string;
-    name: string;
-}
-
-interface ProductSupplier {
-    _id: string;
-    name: string;
-}
-
-interface ProductResponse {
-    _id: string;
-    name: string;
-    category_id: string | ProductCategory;
-    supplier_id: string | ProductSupplier;
-    price: number;
-    unit: string;
-    stock_quantity?: number;
-    expiry_date?: string | Date | null;
-    description?: string;
-    type?: string;
-    image?: string | null;
-    user_id?: string | null;
-    unique_id?: number;
+    image?: File | string | null;
 }
 
 const ProductForm = (): JSX.Element => {
@@ -117,21 +105,6 @@ const ProductForm = (): JSX.Element => {
         { value: 'Other', label: 'Other' }
     ];
 
-    const extractFilenameFromPath = (path: string): string | null => {
-        try {
-            return path.split(/[\\/]/).pop() || null;
-        } catch {
-            return null;
-        }
-    };
-
-    const buildProductImageUrl = (filename: string): string => {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        return `${baseUrl.replace(/\/api$/, '')}/api/medicines/image/${encodeURIComponent(
-            filename
-        )}`;
-    };
-
     const formik = useFormik<FormValues>({
         initialValues: {
             name: '',
@@ -143,7 +116,7 @@ const ProductForm = (): JSX.Element => {
             expiry_date: '',
             description: '',
             type: 'Tablet',
-            image: ''
+            image: null
         },
         validationSchema: Yup.object().shape({
             name: Yup.string().required('Product name is required'),
@@ -156,34 +129,57 @@ const ProductForm = (): JSX.Element => {
             description: Yup.string().nullable(),
             type: Yup.mixed<ProductType>()
                 .oneOf(['Tablet', 'Capsule', 'Syrup', 'Injection', 'Other'])
-                .required('Type is required'),
-            image: Yup.string().nullable()
+                .required('Type is required')
         }),
         onSubmit: async (values) => {
             setIsSubmitting(true);
             try {
                 const formData = new FormData();
-                Object.entries(values).forEach(([key, value]) => {
-                    if (value !== null && value !== undefined) {
-                        formData.append(key, value.toString());
-                    }
-                });
 
-                if (selectedFile) {
-                    formData.append('imageFile', selectedFile);
+                formData.append('name', values.name);
+                formData.append('category_id', values.category_id);
+                formData.append('supplier_id', values.supplier_id);
+                formData.append('price', values.price.toString());
+                formData.append('unit', values.unit);
+                formData.append('stock_quantity', values.stock_quantity.toString());
+                formData.append('type', values.type);
+
+                if (values.expiry_date) formData.append('expiry_date', values.expiry_date);
+                if (values.description) formData.append('description', values.description);
+
+                if (selectedFile instanceof File) {
+                    formData.append('image', selectedFile);
+                } else if (isEdit && typeof values.image === 'string') {
+                    formData.append('image', values.image);
                 }
+
+                const config = {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                };
 
                 if (isEdit && id) {
-                    await API.products.update(id, formData as unknown as CreateProductPayload);
-                    enqueueSnackbar('Product updated!', { variant: 'success' });
+                    await API.products.update(id, formData, config);
+                    enqueueSnackbar('Medicine updated successfully!', { variant: 'success' });
                 } else {
-                    await API.products.create(formData as unknown as CreateProductPayload);
-                    enqueueSnackbar('Product created!', { variant: 'success' });
+                    await API.products.create(formData, config);
+                    enqueueSnackbar('Medicine created successfully!', { variant: 'success' });
                 }
-                navigate('/dashboard/products');
+                navigate('/dashboard/Medicine');
             } catch (error) {
                 console.error('Error:', error);
-                enqueueSnackbar('Operation failed!', { variant: 'error' });
+                if (error instanceof AxiosError) {
+                    if (error.response) {
+                        const errorMessage = error.response.data?.message || 'Operation failed!';
+                        enqueueSnackbar(errorMessage, { variant: 'error' });
+                    } else {
+                        enqueueSnackbar('Request failed', { variant: 'error' });
+                    }
+                } else {
+                    enqueueSnackbar('An unexpected error occurred', { variant: 'error' });
+                }
             } finally {
                 setIsSubmitting(false);
             }
@@ -194,8 +190,8 @@ const ProductForm = (): JSX.Element => {
         const fetchInitialData = async () => {
             try {
                 const [categoriesRes, suppliersRes] = await Promise.all([
-                    API.categories.getAll(1),
-                    API.suppliers.getAll(1)
+                    API.categories.getAll(),
+                    API.suppliers.getAll()
                 ]);
 
                 setCategories(categoriesRes.data.data);
@@ -205,51 +201,40 @@ const ProductForm = (): JSX.Element => {
                 if (isEdit && id) {
                     try {
                         const productRes = await API.products.getById(id);
-                        const product = productRes.data as ProductResponse;
+                        const product = productRes.data as Product;
 
-                        // Type-safe extraction of category ID
-                        const categoryId =
-                            typeof product.category_id === 'object'
-                                ? (product.category_id as ProductCategory)._id
-                                : product.category_id || '';
-
-                        // Type-safe extraction of supplier ID
-                        const supplierId =
-                            typeof product.supplier_id === 'object'
-                                ? (product.supplier_id as ProductSupplier)._id
-                                : product.supplier_id || '';
-
-                        // Ensure product type is valid
-                        const productType = productTypes.some((pt) => pt.value === product.type)
-                            ? (product.type as ProductType)
-                            : 'Tablet';
-
-                        const initialValues: FormValues = {
-                            name: product.name || '',
-                            category_id: categoryId,
-                            supplier_id: supplierId,
-                            price: product.price || 0,
-                            unit: product.unit || '',
+                        const initialValues = {
+                            name: product.name,
+                            category_id:
+                                typeof product.category_id === 'object'
+                                    ? product.category_id._id
+                                    : product.category_id,
+                            supplier_id:
+                                typeof product.supplier_id === 'object'
+                                    ? product.supplier_id._id
+                                    : product.supplier_id,
+                            price: product.price,
+                            unit: product.unit,
                             stock_quantity: product.stock_quantity || 0,
                             expiry_date: product.expiry_date
                                 ? new Date(product.expiry_date).toISOString().split('T')[0]
                                 : '',
                             description: product.description || '',
-                            type: productType,
-                            image: product.image || ''
+                            type: (product.type as ProductType) || 'Tablet',
+                            image: product.image || null
                         };
 
-                        formik.setValues(initialValues);
+                        formik.resetForm({ values: initialValues });
 
                         if (product.image) {
-                            const filename = extractFilenameFromPath(product.image);
-                            if (filename) {
-                                setPreview(buildProductImageUrl(filename));
-                            }
+                            const imgBaseUrl =
+                                import.meta.env.VITE_API_URL?.replace(/\/api$/, '') ||
+                                'http://localhost:8000';
+                            setPreview(`${imgBaseUrl}/uploads/${product.image}`);
                         }
                     } catch (error) {
-                        console.error('Error fetching product:', error);
-                        enqueueSnackbar('Failed to load product', { variant: 'error' });
+                        console.error('Error fetching Medicine:', error);
+                        enqueueSnackbar('Failed to load Medicine data', { variant: 'error' });
                     } finally {
                         setIsLoading((prev) => ({ ...prev, product: false }));
                     }
@@ -272,7 +257,7 @@ const ProductForm = (): JSX.Element => {
         if (e.target.files?.[0]) {
             const file = e.target.files[0];
             setSelectedFile(file);
-            formik.setFieldValue('image', file.name);
+            formik.setFieldValue('image', file);
 
             const reader = new FileReader();
             reader.onload = () => {
@@ -282,7 +267,7 @@ const ProductForm = (): JSX.Element => {
         }
     };
 
-    if (isLoading.product) {
+    if (isLoading.product || isLoading.categories || isLoading.suppliers) {
         return (
             <Box
                 sx={{
@@ -293,23 +278,23 @@ const ProductForm = (): JSX.Element => {
                 }}
             >
                 <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Loading product data...</Typography>
+                <Typography sx={{ ml: 2 }}>Loading data...</Typography>
             </Box>
         );
     }
 
     return (
-        <RootStyle title={isEdit ? 'Edit Product' : 'Create Product'}>
+        <RootStyle title={isEdit ? 'Edit  Medicine' : 'Create Medicine'}>
             <Container>
                 <ContentStyle>
                     <Typography variant="h4" gutterBottom sx={{ mb: 5, textAlign: 'center' }}>
-                        {isEdit ? 'Edit Product' : 'Create New Product'}
+                        {isEdit ? 'Edit  Medicine' : 'Create New Medicine'}
                     </Typography>
 
                     <FormStyle onSubmit={formik.handleSubmit}>
                         <TextField
                             fullWidth
-                            label="Product Name"
+                            label="Medicine Name"
                             name="name"
                             value={formik.values.name}
                             onChange={formik.handleChange}
@@ -320,7 +305,7 @@ const ProductForm = (): JSX.Element => {
                         <TextField
                             select
                             fullWidth
-                            label="Product Type"
+                            label="Medicine Type"
                             name="type"
                             value={formik.values.type}
                             onChange={formik.handleChange}
@@ -437,7 +422,7 @@ const ProductForm = (): JSX.Element => {
 
                         <Box>
                             <Typography variant="body2" sx={{ mb: 1 }}>
-                                Product Image
+                                Medicine Image
                             </Typography>
                             <input
                                 type="file"
@@ -465,9 +450,9 @@ const ProductForm = (): JSX.Element => {
                             {isSubmitting ? (
                                 <CircularProgress size={24} />
                             ) : isEdit ? (
-                                'Update Product'
+                                'Update Medicine'
                             ) : (
-                                'Create Product'
+                                'Create Medicine'
                             )}
                         </Button>
                     </FormStyle>

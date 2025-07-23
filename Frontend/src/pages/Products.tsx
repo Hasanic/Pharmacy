@@ -187,7 +187,7 @@ const EcommerceShop = (): JSX.Element => {
     };
 
     const handleEditProduct = (product: IProduct) => {
-        navigate(`/dashboard/products/edit/${product._id}`);
+        navigate(`/dashboard/Medicine/edit/${product._id}`);
     };
 
     const handleDeleteProduct = async (productId: string) => {
@@ -205,12 +205,12 @@ const EcommerceShop = (): JSX.Element => {
             <Container>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
                     <Typography variant="h4" gutterBottom>
-                        Products
+                        Medicine
                     </Typography>
                     <Button
                         variant="contained"
                         component={RouterLink}
-                        to="/dashboard/products/create"
+                        to="/dashboard/Medicine/create"
                         startIcon={
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -223,7 +223,7 @@ const EcommerceShop = (): JSX.Element => {
                             </svg>
                         }
                     >
-                        New Product
+                        New Medicine
                     </Button>
                 </Stack>
 
